@@ -1,0 +1,11 @@
+{
+  "name": "game-agent",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev:web": "pnpm --filter @game-agent/web dev",
+    "build:web": "pnpm --filter @game-agent/web build",
+    "typecheck:web": "pnpm --filter @game-agent/web typecheck"
+  },
+  "packageManager": "pnpm@10.0.0"
+}

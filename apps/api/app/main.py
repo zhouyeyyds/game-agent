@@ -1,0 +1,38 @@
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.api.routes import auth, games, health
+from app.core.config import get_settings
+from app.core.database import Base, engine
+from app.core.storage import ensure_bucket
+import app.models  # noqa: F401
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    ensure_bucket()
+    yield
+
+
+def create_app() -> FastAPI:
+    settings = get_settings()
+    app = FastAPI(title="PromptPlay AI API", version="0.1.0", lifespan=lifespan)
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[settings.frontend_origin],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    app.include_router(health.router)
+    app.include_router(auth.router, prefix="/api")
+    app.include_router(games.router, prefix="/api")
+    return app
+
+
+app = create_app()
