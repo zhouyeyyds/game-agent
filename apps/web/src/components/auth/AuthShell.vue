@@ -1,11 +1,11 @@
 <template>
   <section class="auth-hero">
-    <div class="auth-brand">
-      <span class="auth-logo">
-        <span class="auth-logo-triangle" />
-      </span>
-      <span>AgentPlay</span>
-    </div>
+    <RouterLink to="/">
+      <div class="auth-brand">
+        <img class="auth-logo" :src="logoUrl" alt="" />
+        <span>AgentPlay</span>
+      </div>
+    </RouterLink>
 
     <div class="auth-hero-content">
       <div class="auth-pill">
@@ -26,7 +26,11 @@
       </p>
 
       <div class="auth-features">
-        <div v-for="item in featureItems" :key="item.title" class="auth-feature">
+        <div
+          v-for="item in featureItems"
+          :key="item.title"
+          class="auth-feature"
+        >
           <span class="auth-feature-icon">
             <el-icon><component :is="item.icon" /></el-icon>
           </span>
@@ -54,25 +58,27 @@
 </template>
 
 <script setup lang="ts">
-import { Connection, MagicStick, Promotion } from '@element-plus/icons-vue'
+import { Connection, MagicStick, Promotion } from "@element-plus/icons-vue";
+
+import logoUrl from "@/assets/logo.png";
 
 const featureItems = [
   {
-    title: 'AI 生成，创意无限',
-    text: '用自然语言生成剧情、角色与世界设定，AI 帮你快速落地创意。',
+    title: "AI 生成，创意无限",
+    text: "用自然语言生成剧情、角色与世界设定，AI 帮你快速落地创意。",
     icon: MagicStick,
   },
   {
-    title: '沉浸体验，互动随心',
-    text: '多分支剧情、角色记忆、实时反馈，每一次选择都影响叙事走向。',
+    title: "沉浸体验，互动随心",
+    text: "多分支剧情、角色记忆、实时反馈，每一次选择都影响叙事走向。",
     icon: Connection,
   },
   {
-    title: '创作发布，连接世界',
-    text: '一键发布你的作品，收获玩家反馈，与全球创作者共同成长。',
+    title: "创作发布，连接世界",
+    text: "一键发布你的作品，收获玩家反馈，与全球创作者共同成长。",
     icon: Promotion,
   },
-]
+];
 </script>
 
 <style scoped>
@@ -85,8 +91,16 @@ const featureItems = [
   overflow: hidden;
   border-radius: 16px 0 0 16px;
   background:
-    radial-gradient(circle at 82% 84%, rgba(131, 97, 255, 0.3), transparent 36%),
-    radial-gradient(circle at 70% 54%, rgba(96, 165, 250, 0.18), transparent 38%),
+    radial-gradient(
+      circle at 82% 84%,
+      rgba(131, 97, 255, 0.3),
+      transparent 36%
+    ),
+    radial-gradient(
+      circle at 70% 54%,
+      rgba(96, 165, 250, 0.18),
+      transparent 38%
+    ),
     linear-gradient(145deg, #f8fbff 0%, #eef6ff 48%, #ddd8ff 100%);
 }
 
@@ -105,45 +119,11 @@ const featureItems = [
 }
 
 .auth-logo {
-  position: relative;
-  display: grid;
   width: 40px;
   height: 40px;
-  place-items: center;
   border-radius: 12px;
-  background: linear-gradient(135deg, #2563eb, #7657ff);
+  object-fit: contain;
   box-shadow: 0 12px 28px rgba(79, 70, 229, 0.24);
-}
-
-.auth-logo::before,
-.auth-logo::after {
-  position: absolute;
-  width: 23px;
-  height: 23px;
-  border-radius: 8px;
-  background: rgba(113, 225, 255, 0.68);
-  content: "";
-}
-
-.auth-logo::before {
-  left: -4px;
-  top: 8px;
-}
-
-.auth-logo::after {
-  right: -4px;
-  bottom: 8px;
-}
-
-.auth-logo-triangle {
-  position: relative;
-  z-index: 2;
-  width: 0;
-  height: 0;
-  border-bottom: 10px solid transparent;
-  border-left: 16px solid #fff;
-  border-top: 10px solid transparent;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.14));
 }
 
 .auth-hero-content {

@@ -164,7 +164,7 @@ async function submit() {
       email: email.value || "demo@example.com",
       password: password.value || "password123",
     });
-    await router.push(String(route.query.redirect || "/create"));
+    await router.push(String(route.query.redirect || "/"));
   } catch (error) {
     ElMessage.error(
       error instanceof Error

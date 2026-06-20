@@ -8,7 +8,7 @@
           to="/"
           class="flex shrink-0 items-center gap-3 text-slate-800 no-underline"
         >
-          <span class="brand-mark">A</span>
+          <img class="brand-mark" :src="logoUrl" alt="" />
           <span class="hidden text-xl font-semibold tracking-normal sm:inline"
             >AgentPlay</span
           >
@@ -107,6 +107,7 @@ import { ElMessage } from "element-plus";
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 
+import logoUrl from "@/assets/logo.png";
 import { useAuthStore } from "@/stores/auth";
 
 const auth = useAuthStore();
@@ -135,14 +136,10 @@ async function handleCommand(command: string) {
 
 <style scoped>
 .brand-mark {
-  display: grid;
   width: 34px;
   height: 34px;
-  place-items: center;
   border-radius: 8px;
-  background: linear-gradient(135deg, #11c5d9, #2f63ff);
-  color: #fff;
-  font-weight: 800;
+  object-fit: contain;
 }
 
 .user-button {

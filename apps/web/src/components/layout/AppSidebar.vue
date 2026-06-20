@@ -1,9 +1,7 @@
 <template>
   <aside class="fixed inset-y-0 left-0 z-30 hidden w-72 border-r border-white/10 bg-[#07010f]/95 px-5 py-6 text-white shadow-2xl backdrop-blur xl:flex xl:flex-col">
     <RouterLink to="/" class="flex items-center gap-3 no-underline">
-      <div class="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-cyan-300 via-fuchsia-400 to-violet-600 text-2xl font-black shadow-lg shadow-fuchsia-500/25">
-        P
-      </div>
+      <img class="sidebar-logo" :src="logoUrl" alt="" />
       <div>
         <p class="m-0 text-2xl font-black tracking-tight text-white">PromptPlay</p>
         <p class="m-0 text-xs font-semibold uppercase tracking-[0.25em] text-cyan-200/80">AI Arcade</p>
@@ -65,6 +63,7 @@
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 
+import logoUrl from '@/assets/logo.png'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -87,6 +86,14 @@ async function handleLogout() {
 </script>
 
 <style scoped>
+.sidebar-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  object-fit: contain;
+  box-shadow: 0 10px 24px rgb(217 70 239 / 25%);
+}
+
 .sidebar-link {
   display: flex;
   align-items: center;
