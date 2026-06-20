@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     jwt_cookie_name: str = "game_agent_session"
     jwt_expire_minutes: int = 60 * 24 * 7
 
+    github_oauth_client_id: str | None = None
+    github_oauth_client_secret: str | None = None
+    github_oauth_callback_url: str = "http://localhost:18000/api/auth/oauth/github/callback"
+
     minio_endpoint: str = "192.168.150.101:19000"
     minio_public_endpoint: str = "http://192.168.150.101:19000"
     minio_access_key: str = "game_agent_minio"

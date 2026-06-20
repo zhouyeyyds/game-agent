@@ -16,3 +16,14 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
+
+
+class OAuthProviderStatus(BaseModel):
+    provider: str
+    configured: bool
+    status: str
+    startUrl: str | None = None
+
+
+class OAuthProvidersResponse(BaseModel):
+    providers: list[OAuthProviderStatus]

@@ -326,3 +326,39 @@ Agent 节点在运行时从数据库读取素材元信息和 URL 作为引用上
 - 上传素材已支持视频/PDF/DOCX，但 Agent 目前只消费素材元信息和 URL，没有做视频帧抽取、PDF/DOCX 文本解析或多模态模型理解。
 - Play 侧部分展示数据仍为静态 UI 文案，如资源大小、加载耗时、好评率和相关游戏，后续应接真实埋点与推荐接口。
 - 数据库 schema 目前依赖 `create_all` 和轻量升级逻辑，生产应使用 Alembic migration 管理。
+
+## GitHub OAuth demo implementation
+
+GitHub OAuth is implemented for the demo path. Google remains a planned provider with a visible UI entry and explicit not-configured feedback.
+
+Implemented endpoints:
+
+```text
+GET /api/auth/oauth/providers
+GET /api/auth/oauth/github/start?redirect=/create
+GET /api/auth/oauth/github/callback
+GET /api/auth/oauth/google/start
+```
+
+`/github/start` creates a signed OAuth state, stores it in an httpOnly cookie, and redirects to GitHub with the `read:user user:email` scope. `/github/callback` validates state, exchanges the code for a temporary access token, fetches the GitHub profile and verified primary email, then binds to an existing user with the same verified email or creates a new user. The GitHub access token is not persisted.
+
+GitHub OAuth App local callback URL:
+
+```text
+http://localhost:18000/api/auth/oauth/github/callback
+```
+
+The `oauth_accounts` table stores provider identity only:
+
+```text
+oauth_accounts
+  id
+  user_id
+  provider
+  provider_account_id
+  provider_email
+  provider_username
+  avatar_url
+  created_at
+  updated_at
+```

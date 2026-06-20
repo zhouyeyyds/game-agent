@@ -1,6 +1,6 @@
 import axios, { AxiosError, type AxiosRequestConfig } from 'axios'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
 export class ApiError extends Error {
   constructor(

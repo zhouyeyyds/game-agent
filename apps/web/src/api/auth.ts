@@ -1,4 +1,4 @@
-import { apiRequest } from './client'
+import { API_BASE_URL, apiRequest } from './client'
 import type { User } from './types'
 
 export interface AuthCredentials {
@@ -8,6 +8,17 @@ export interface AuthCredentials {
 
 export interface RegisterPayload extends AuthCredentials {
   displayName: string
+}
+
+export interface OAuthProviderStatus {
+  provider: 'github' | 'google' | string
+  configured: boolean
+  status: string
+  startUrl: string | null
+}
+
+export interface OAuthProvidersResponse {
+  providers: OAuthProviderStatus[]
 }
 
 export function fetchMe() {
@@ -30,4 +41,13 @@ export function register(payload: RegisterPayload) {
 
 export function logout() {
   return apiRequest<{ ok: boolean }>('/api/auth/logout', { method: 'POST' })
+}
+
+export function fetchOAuthProviders() {
+  return apiRequest<OAuthProvidersResponse>('/api/auth/oauth/providers')
+}
+
+export function oauthStartUrl(provider: 'github' | 'google', redirect: string) {
+  const query = new URLSearchParams({ redirect })
+  return `${API_BASE_URL}/api/auth/oauth/${provider}/start?${query.toString()}`
 }

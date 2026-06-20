@@ -81,3 +81,33 @@ game_agent_minio / game_agent_minio_password
 - `GET /api/auth/me`
 - `GET /api/games?status=published`
 - `GET /api/games/{game_id}/play`
+
+## GitHub OAuth local setup
+
+GitHub login is wired through the backend OAuth callback.
+
+Create a GitHub OAuth App and use:
+
+```text
+Homepage URL: http://localhost:5173
+Authorization callback URL: http://localhost:18000/api/auth/oauth/github/callback
+```
+
+Then set these values in `.env` and restart the backend:
+
+```env
+GITHUB_OAUTH_CLIENT_ID=...
+GITHUB_OAUTH_CLIENT_SECRET=...
+GITHUB_OAUTH_CALLBACK_URL=http://localhost:18000/api/auth/oauth/github/callback
+```
+
+Related API endpoints:
+
+```text
+GET /api/auth/oauth/providers
+GET /api/auth/oauth/github/start?redirect=/create
+GET /api/auth/oauth/github/callback
+GET /api/auth/oauth/google/start
+```
+
+Google OAuth is intentionally left as a planned demo entry. The UI reports it as not connected.

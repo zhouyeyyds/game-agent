@@ -60,7 +60,11 @@
     </div>
 
     <div class="social-buttons">
-      <el-button size="large">
+      <el-button
+        size="large"
+        :loading="providersLoading"
+        @click="startGoogleOAuth"
+      >
         <svg class="social-icon" viewBox="0 0 24 24" aria-hidden="true">
           <path
             fill="#4285F4"
@@ -81,7 +85,11 @@
         </svg>
         使用 Google 账号{{ isRegister ? "注册" : "登录" }}
       </el-button>
-      <el-button size="large">
+      <el-button
+        size="large"
+        :loading="providersLoading"
+        @click="startGitHubOAuth"
+      >
         <svg
           class="social-icon github-icon"
           viewBox="0 0 24 24"
@@ -108,9 +116,10 @@
 <script setup lang="ts">
 import { Lock, Message, User } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
+import { fetchOAuthProviders, oauthStartUrl, type OAuthProviderStatus } from "@/api/auth";
 import { useAuthStore } from "@/stores/auth";
 
 const props = defineProps<{
@@ -126,6 +135,8 @@ const remember = ref(true);
 const displayName = ref("Creator");
 const email = ref("");
 const password = ref("");
+const providers = ref<OAuthProviderStatus[]>([]);
+const providersLoading = ref(false);
 
 const tabs = [
   { label: "登录", value: "login" },
@@ -133,6 +144,9 @@ const tabs = [
 ];
 
 const isRegister = computed(() => activeMode.value === "register");
+const githubProvider = computed(() =>
+  providers.value.find((provider) => provider.provider === "github"),
+);
 
 watch(
   () => props.mode,
@@ -146,6 +160,35 @@ function handleTabChange(value: string | number) {
   if (target !== props.mode) {
     router.push({ name: target, query: route.query });
   }
+}
+
+function currentRedirect() {
+  const redirect = route.query.redirect;
+  if (typeof redirect === "string" && redirect.startsWith("/")) return redirect;
+  return "/create";
+}
+
+async function loadOAuthProviders() {
+  providersLoading.value = true;
+  try {
+    providers.value = (await fetchOAuthProviders()).providers;
+  } catch {
+    providers.value = [];
+  } finally {
+    providersLoading.value = false;
+  }
+}
+
+function startGitHubOAuth() {
+  if (!githubProvider.value?.configured) {
+    ElMessage.warning("GitHub OAuth 未配置，请先设置 GitHub OAuth App 的 Client ID 和 Secret");
+    return;
+  }
+  window.location.href = oauthStartUrl("github", currentRedirect());
+}
+
+function startGoogleOAuth() {
+  ElMessage.info("Google OAuth demo 阶段暂未接入，当前仅 GitHub 支持真实授权登录");
 }
 
 async function submit() {
@@ -174,6 +217,27 @@ async function submit() {
           : "登录失败",
     );
   }
+}
+
+onMounted(() => {
+  void loadOAuthProviders();
+  const oauthError = route.query.oauth_error;
+  if (typeof oauthError === "string" && oauthError) {
+    ElMessage.error(formatOAuthError(oauthError));
+  }
+});
+
+function formatOAuthError(value: string) {
+  const knownMessages: Record<string, string> = {
+    google_not_configured: "Google OAuth demo 阶段暂未接入",
+    github_missing_code: "GitHub 授权回调缺少 code，请重新登录",
+    "GitHub OAuth is not configured": "GitHub OAuth 未配置",
+    "OAuth state mismatch": "GitHub 授权状态校验失败，请重新登录",
+    "Invalid OAuth state": "GitHub 授权状态已失效，请重新登录",
+    "GitHub account has no verified primary email": "GitHub 账号缺少已验证主邮箱",
+    "GitHub OAuth request failed": "GitHub 授权请求失败，请稍后重试",
+  };
+  return knownMessages[value] || `第三方登录失败：${value}`;
 }
 </script>
 
