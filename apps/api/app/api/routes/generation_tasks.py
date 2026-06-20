@@ -22,6 +22,7 @@ from app.schemas.task import (
     CreateTaskRequest,
     GenerationTaskResponse,
     PublishTaskRequest,
+    TaskMetrics,
     TaskResult,
 )
 from app.services.generation_pipeline import run_generation_pipeline
@@ -64,6 +65,14 @@ def to_task_response(task: GenerationTask) -> GenerationTaskResponse:
         ideaText=task.idea_text,
         assetIds=task.input_assets_json or [],
         result=result,
+        metrics=TaskMetrics(
+            agentStepCount=task.agent_step_count or 0,
+            modelCallCount=task.model_call_count or 0,
+            promptTokens=task.prompt_tokens or 0,
+            completionTokens=task.completion_tokens or 0,
+            totalTokens=task.total_tokens or 0,
+            estimatedCostUsd=task.estimated_cost_usd,
+        ),
         errorMessage=task.error_message,
         createdAt=task.created_at.isoformat() if task.created_at else None,
         startedAt=task.started_at.isoformat() if task.started_at else None,

@@ -1,6 +1,7 @@
 import axios, { AxiosError, type AxiosRequestConfig } from 'axios'
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+export const REQUEST_ID_HEADER = 'X-Request-ID'
 
 export class ApiError extends Error {
   constructor(
@@ -18,6 +19,17 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+})
+
+export function createRequestId() {
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+apiClient.interceptors.request.use((config) => {
+  config.headers.set(REQUEST_ID_HEADER, config.headers.get(REQUEST_ID_HEADER) || createRequestId())
+  return config
 })
 
 function toApiError(error: unknown): ApiError {

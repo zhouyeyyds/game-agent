@@ -24,6 +24,15 @@ class TaskResult(BaseModel):
     gameStatus: str | None = None
 
 
+class TaskMetrics(BaseModel):
+    agentStepCount: int = 0
+    modelCallCount: int = 0
+    promptTokens: int = 0
+    completionTokens: int = 0
+    totalTokens: int = 0
+    estimatedCostUsd: float | None = None
+
+
 class GenerationTaskResponse(BaseModel):
     id: str
     status: str
@@ -31,6 +40,7 @@ class GenerationTaskResponse(BaseModel):
     ideaText: str
     assetIds: list[str]
     result: TaskResult
+    metrics: TaskMetrics = Field(default_factory=TaskMetrics)
     errorMessage: str | None = None
     createdAt: str | None = None
     startedAt: str | None = None

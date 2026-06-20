@@ -23,6 +23,15 @@ export interface PublishGamePayload {
   tags: string[]
 }
 
+export interface TaskMetrics {
+  agentStepCount: number
+  modelCallCount: number
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+  estimatedCostUsd: number | null
+}
+
 export interface GenerationTaskResponse {
   id: string
   status: 'pending' | 'running' | 'succeeded' | 'failed' | 'canceled'
@@ -30,6 +39,7 @@ export interface GenerationTaskResponse {
   ideaText: string
   assetIds: string[]
   result: TaskResult
+  metrics: TaskMetrics
   errorMessage: string | null
   createdAt: string | null
   startedAt: string | null

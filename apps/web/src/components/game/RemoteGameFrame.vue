@@ -49,6 +49,12 @@ const props = defineProps<{
   error?: string | null
 }>()
 
+const emit = defineEmits<{
+  ready: [payload: Record<string, unknown>]
+  completed: [payload: Record<string, unknown>]
+  error: [payload: Record<string, unknown>]
+}>()
+
 const shellRef = ref<HTMLDivElement | null>(null)
 const frameRef = ref<HTMLIFrameElement | null>(null)
 const gameStatus = ref<'loading' | 'ready' | 'completed' | 'error'>('loading')
@@ -66,19 +72,22 @@ watch(() => props.manifest?.entryUrl, () => {
 })
 
 function handleMessage(event: MessageEvent) {
-  const data = event.data as { type?: string }
+  const data = event.data as { type?: string; [key: string]: unknown }
   if (!data || typeof data.type !== 'string') return
 
   if (data.type === 'game.ready') {
     gameStatus.value = 'ready'
+    emit('ready', data)
   }
 
   if (data.type === 'game.completed') {
     gameStatus.value = 'completed'
+    emit('completed', data)
   }
 
   if (data.type === 'game.error') {
     gameStatus.value = 'error'
+    emit('error', data)
   }
 }
 

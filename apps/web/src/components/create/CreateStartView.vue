@@ -169,6 +169,15 @@
               <span>结果</span>
               <strong>{{ taskResultSummary(task) }}</strong>
             </div>
+            <div class="recent-task__publish">
+              <span>发布状态</span>
+              <strong
+                class="publish-status-pill"
+                :class="publishStatusClass(task)"
+              >
+                {{ publishStatusLabel(task) }}
+              </strong>
+            </div>
             <div class="recent-task__actions">
               <el-button
                 size="small"
@@ -260,6 +269,22 @@ const emit = defineEmits<{
 
 function handleUpload(options: UploadRequestOptions) {
   emit("upload", options);
+}
+
+function publishStatusLabel(task: GenerationTaskResponse) {
+  if (!task.result.gameId) return "未生成";
+  if (task.result.gameStatus === "published") return "已发布";
+  if (task.result.gameStatus === "archived") return "已下架";
+  return "未发布";
+}
+
+function publishStatusClass(task: GenerationTaskResponse) {
+  return {
+    "publish-status-pill--published": task.result.gameStatus === "published",
+    "publish-status-pill--archived": task.result.gameStatus === "archived",
+    "publish-status-pill--draft": Boolean(task.result.gameId) && task.result.gameStatus !== "published" && task.result.gameStatus !== "archived",
+    "publish-status-pill--empty": !task.result.gameId,
+  };
 }
 
 const StepTitle = defineComponent({

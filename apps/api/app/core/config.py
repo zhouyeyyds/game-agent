@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     llm_temperature: float = 0.4
     llm_timeout_seconds: int = 300
     llm_max_retries: int = 2
+    llm_input_cost_per_1m_tokens: float = 0.0
+    llm_output_cost_per_1m_tokens: float = 0.0
     agent_max_repair_attempts: int = 2
 
 

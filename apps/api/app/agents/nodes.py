@@ -8,7 +8,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.agents.llm import generate_json
+from app.agents.llm import LLMJsonResult, generate_json
 from app.agents.state import GenerationState
 from app.core.constants import (
     PENDING_STORAGE_VALUE,
@@ -17,6 +17,7 @@ from app.core.constants import (
     TaskStatus,
     TaskStep,
 )
+from app.core.config import get_settings
 from app.core.storage import public_object_url, upload_text_object
 from app.models import AgentLog, Asset, Game, GameVersion, GenerationTask, User
 from app.schemas.generated_bundle import GeneratedGameBundle
@@ -59,6 +60,7 @@ def add_log(
     level: str = AgentLogLevel.INFO,
     payload: dict[str, Any] | None = None,
 ) -> None:
+    task.agent_step_count = (task.agent_step_count or 0) + 1
     db.add(
         AgentLog(
             task_id=task.id,
@@ -69,6 +71,46 @@ def add_log(
         )
     )
     db.commit()
+
+
+def record_llm_usage(
+    db: Session,
+    task: GenerationTask,
+    node_name: str,
+    result: LLMJsonResult,
+) -> dict[str, Any]:
+    settings = get_settings()
+    usage = result.usage
+    input_cost = (
+        usage.prompt_tokens / 1_000_000 * settings.llm_input_cost_per_1m_tokens
+        if settings.llm_input_cost_per_1m_tokens > 0
+        else 0
+    )
+    output_cost = (
+        usage.completion_tokens / 1_000_000 * settings.llm_output_cost_per_1m_tokens
+        if settings.llm_output_cost_per_1m_tokens > 0
+        else 0
+    )
+    estimated_cost = input_cost + output_cost
+    usage_entry = {
+        "node": node_name,
+        "model": result.model,
+        "promptTokens": usage.prompt_tokens,
+        "completionTokens": usage.completion_tokens,
+        "totalTokens": usage.total_tokens,
+        "estimatedCostUsd": round(estimated_cost, 8) if estimated_cost > 0 else None,
+        "elapsedMs": result.elapsed_ms,
+    }
+    task.model_call_count = (task.model_call_count or 0) + 1
+    task.prompt_tokens = (task.prompt_tokens or 0) + usage.prompt_tokens
+    task.completion_tokens = (task.completion_tokens or 0) + usage.completion_tokens
+    task.total_tokens = (task.total_tokens or 0) + usage.total_tokens
+    if estimated_cost > 0:
+        task.estimated_cost_usd = round((task.estimated_cost_usd or 0) + estimated_cost, 8)
+    task.usage_json = [*(task.usage_json or []), usage_entry]
+    db.commit()
+    db.refresh(task)
+    return usage_entry
 
 
 def update_step(
@@ -285,7 +327,9 @@ def code_generation_agent(
         },
         ensure_ascii=False,
     )
-    bundle_json = generate_json(BUNDLE_SYSTEM_PROMPT, user_prompt)
+    llm_result = generate_json(BUNDLE_SYSTEM_PROMPT, user_prompt)
+    bundle_json = llm_result.data
+    usage_entry = record_llm_usage(db, task, "code_generation_agent", llm_result)
     ensure_task_not_canceled(db, task)
     add_log(
         db,
@@ -295,6 +339,7 @@ def code_generation_agent(
         payload={
             "title": bundle_json.get("title"),
             "fileCount": len(bundle_json.get("files", [])),
+            "usage": usage_entry,
         },
     )
     return {"bundle_json": bundle_json, "repair_attempts": 0}
@@ -375,14 +420,16 @@ def repair_bundle(db: Session, task: GenerationTask, state: GenerationState) -> 
         },
         ensure_ascii=False,
     )
-    repaired = generate_json(REPAIR_BUNDLE_SYSTEM_PROMPT, user_prompt)
+    llm_result = generate_json(REPAIR_BUNDLE_SYSTEM_PROMPT, user_prompt)
+    repaired = llm_result.data
+    usage_entry = record_llm_usage(db, task, "repair_bundle", llm_result)
     ensure_task_not_canceled(db, task)
     add_log(
         db,
         task,
         "repair_bundle",
         f"Repaired generated bundle JSON, attempt {attempts}.",
-        payload={"attempt": attempts},
+        payload={"attempt": attempts, "usage": usage_entry},
     )
     return {"bundle_json": repaired, "repair_attempts": attempts}
 

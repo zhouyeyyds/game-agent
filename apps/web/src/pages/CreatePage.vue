@@ -130,6 +130,7 @@ import {
 
 import { uploadAsset, type AssetResponse } from "@/api/assets";
 import type { AgentLogResponse, GenerationTaskResponse } from "@/api/tasks";
+import { trackEvent } from "@/api/telemetry";
 import type { GameManifest } from "@/api/types";
 import CreateFailureView from "@/components/create/CreateFailureView.vue";
 import CreateRunningView from "@/components/create/CreateRunningView.vue";
@@ -450,10 +451,10 @@ const taskInfoRows = computed<InfoRow[]>(() => [
   },
 ]);
 const resourceRows = computed<InfoRow[]>(() => [
-  { label: "总消耗", value: "1,240 积分" },
-  { label: "Tokens 消耗", value: "3,245,678" },
-  { label: "模型调用", value: "18 次" },
-  { label: "智能体调用", value: "24 次" },
+  { label: "Tokens 消耗", value: formatMetricCount(currentTask.value?.metrics.totalTokens) },
+  { label: "模型调用", value: formatMetricTimes(currentTask.value?.metrics.modelCallCount) },
+  { label: "智能体调用", value: formatMetricTimes(currentTask.value?.metrics.agentStepCount) },
+  { label: "预计费用", value: formatEstimatedCost(currentTask.value?.metrics.estimatedCostUsd) },
 ]);
 const buildInfoRows = computed<InfoRow[]>(() => {
   const manifestUrl = currentTask.value?.result.manifestUrl || "-";
@@ -587,6 +588,35 @@ function deriveBundleUrl(manifestUrl: string) {
     .replace(/manifest\.json$/i, "bundle.zip");
 }
 
+function taskEventPayload(task: GenerationTaskResponse | null = currentTask.value) {
+  if (!task) return {};
+  return {
+    status: task.status,
+    currentStep: task.currentStep,
+    totalTokens: task.metrics.totalTokens,
+    modelCallCount: task.metrics.modelCallCount,
+    agentStepCount: task.metrics.agentStepCount,
+  };
+}
+
+function formatMetricCount(value: number | null | undefined) {
+  if (!currentTask.value) return "-";
+  if (!value) return "统计中";
+  return value.toLocaleString();
+}
+
+function formatMetricTimes(value: number | null | undefined) {
+  if (!currentTask.value) return "-";
+  if (!value) return "统计中";
+  return `${value.toLocaleString()} 次`;
+}
+
+function formatEstimatedCost(value: number | null | undefined) {
+  if (!currentTask.value) return "-";
+  if (value === null || value === undefined || value <= 0) return "-";
+  return `$${value.toFixed(6)}`;
+}
+
 function fillInspiration() {
   idea.value = visibleInspirations.value[0]?.prompt || "";
 }
@@ -612,10 +642,28 @@ async function handleUpload(options: UploadRequestOptions) {
     const asset = await uploadAsset(options.file);
     uploadedAssets.value.push(asset);
     options.onSuccess(asset);
+    void trackEvent({
+      eventType: "asset_upload_success",
+      entityType: "asset",
+      entityId: asset.id,
+      payload: {
+        filename: asset.filename,
+        contentType: asset.contentType,
+        sizeBytes: asset.sizeBytes,
+      },
+    });
     ElMessage.success(`已上传 ${asset.filename}`);
   } catch (caught) {
     const uploadError =
       caught instanceof Error ? caught : new Error("上传失败");
+    void trackEvent({
+      eventType: "asset_upload_failed",
+      payload: {
+        filename: options.file.name,
+        sizeBytes: options.file.size,
+        message: uploadError.message,
+      },
+    });
     options.onError(
       uploadError as Parameters<UploadRequestOptions["onError"]>[0],
     );
@@ -628,10 +676,22 @@ async function handleUpload(options: UploadRequestOptions) {
 async function generate() {
   if (!canGenerate.value) return;
   previewManifest.value = null;
+  const assetCount = uploadedAssets.value.length;
   await createTask.startTask({
     ideaText: idea.value.trim(),
     assetIds: uploadedAssets.value.map((asset) => asset.id),
   });
+  if (currentTask.value) {
+    void trackEvent({
+      eventType: "create_task_started",
+      entityType: "generation_task",
+      entityId: currentTask.value.id,
+      payload: {
+        ideaLength: currentTask.value.ideaText.length,
+        assetCount,
+      },
+    });
+  }
 }
 
 async function regenerate() {
@@ -642,18 +702,40 @@ async function regenerate() {
       currentTask.value.status === "succeeded"
     ) {
       const task = await createTask.retryTaskById(currentTask.value.id);
+      void trackEvent({
+        eventType: "create_task_retry",
+        entityType: "generation_task",
+        entityId: currentTask.value.id,
+        payload: { nextTaskId: task?.id },
+      });
       if (task) ElMessage.success("已创建重试任务");
       return;
     }
     const sourceIdea = currentTask.value.ideaText;
     const sourceAssetIds = currentTask.value.assetIds;
     if (canCancelTask(currentTask.value)) {
-      await createTask.cancelCurrentTask();
+      const canceledTask = await createTask.cancelCurrentTask();
+      if (canceledTask) {
+        void trackEvent({
+          eventType: "create_task_cancel",
+          entityType: "generation_task",
+          entityId: canceledTask.id,
+          payload: taskEventPayload(canceledTask),
+        });
+      }
     }
     await createTask.startTask({
       ideaText: sourceIdea,
       assetIds: sourceAssetIds,
     });
+    if (currentTask.value) {
+      void trackEvent({
+        eventType: "create_task_started",
+        entityType: "generation_task",
+        entityId: currentTask.value.id,
+        payload: { regenerated: true, assetCount: sourceAssetIds.length },
+      });
+    }
     ElMessage.success("已重新生成");
     return;
   }
@@ -662,6 +744,14 @@ async function regenerate() {
 
 async function cancelCurrent() {
   const task = await createTask.cancelCurrentTask();
+  if (task) {
+    void trackEvent({
+      eventType: "create_task_cancel",
+      entityType: "generation_task",
+      entityId: task.id,
+      payload: taskEventPayload(task),
+    });
+  }
   if (task) ElMessage.success("任务已取消");
 }
 
@@ -670,6 +760,12 @@ async function publish() {
   if (!payload) return;
   const task = await createTask.publishCurrentTask(payload);
   if (task?.result.gameId) {
+    void trackEvent({
+      eventType: "create_task_publish",
+      entityType: "generation_task",
+      entityId: task.id,
+      payload: { gameId: task.result.gameId, ...taskEventPayload(task) },
+    });
     ElMessage.success("已发布到首页");
   }
 }
@@ -679,6 +775,12 @@ async function savePublishInfo() {
   if (!payload) return;
   const task = await createTask.saveCurrentGameInfo(payload);
   if (task?.result.gameId) {
+    void trackEvent({
+      eventType: "create_publish_info_saved",
+      entityType: "generation_task",
+      entityId: task.id,
+      payload: { gameId: task.result.gameId },
+    });
     ElMessage.success("发布信息已保存");
   }
 }
@@ -696,6 +798,12 @@ async function unpublishGame() {
     );
     const task = await createTask.unpublishCurrentGame();
     if (task?.result.gameId) {
+      void trackEvent({
+        eventType: "game_unpublish",
+        entityType: "game",
+        entityId: task.result.gameId,
+        payload: { taskId: task.id },
+      });
       ElMessage.success("游戏已下架");
     }
   } catch (caught) {
@@ -728,8 +836,28 @@ async function handleCoverUpload(file: File) {
   try {
     const asset = await uploadAsset(file);
     publishCoverUrl.value = asset.url;
+    void trackEvent({
+      eventType: "asset_upload_success",
+      entityType: "asset",
+      entityId: asset.id,
+      payload: {
+        usage: "cover",
+        filename: asset.filename,
+        contentType: asset.contentType,
+        sizeBytes: asset.sizeBytes,
+      },
+    });
     ElMessage.success("封面已更新");
   } catch (caught) {
+    void trackEvent({
+      eventType: "asset_upload_failed",
+      payload: {
+        usage: "cover",
+        filename: file.name,
+        sizeBytes: file.size,
+        message: caught instanceof Error ? caught.message : "cover upload failed",
+      },
+    });
     ElMessage.error(caught instanceof Error ? caught.message : "封面上传失败");
   } finally {
     coverUploading.value = false;
@@ -770,6 +898,12 @@ async function loadTaskHistory() {
 async function viewHistoryTask(task: GenerationTaskResponse) {
   previewManifest.value = null;
   await createTask.selectTask(task);
+  void trackEvent({
+    eventType: "create_history_view",
+    entityType: "generation_task",
+    entityId: task.id,
+    payload: taskEventPayload(task),
+  });
 }
 
 async function cancelHistoryTask(task: GenerationTaskResponse) {
@@ -779,6 +913,12 @@ async function cancelHistoryTask(task: GenerationTaskResponse) {
 
 async function retryHistoryTask(task: GenerationTaskResponse) {
   const nextTask = await createTask.retryTaskById(task.id);
+  void trackEvent({
+    eventType: "create_task_retry",
+    entityType: "generation_task",
+    entityId: task.id,
+    payload: { nextTaskId: nextTask?.id },
+  });
   if (nextTask) ElMessage.success("已创建重试任务");
 }
 
@@ -799,6 +939,12 @@ async function deleteHistoryTask(task: GenerationTaskResponse) {
     );
     await createTask.deleteTaskById(task.id);
     previewManifest.value = null;
+    void trackEvent({
+      eventType: "create_task_delete",
+      entityType: "generation_task",
+      entityId: task.id,
+      payload: taskEventPayload(task),
+    });
     ElMessage.success("任务已删除");
   } catch (caught) {
     if (caught === "cancel" || caught === "close") return;
@@ -1353,7 +1499,7 @@ onBeforeUnmount(() => createTask.stopPolling());
 
 .recent-task__row {
   display: grid;
-  grid-template-columns: 92px minmax(220px, 1fr) 170px 180px 90px auto;
+  grid-template-columns: 92px minmax(220px, 1fr) 160px 160px 120px auto;
   gap: 18px;
   align-items: center;
   border: 1px solid #e2e8f0;
@@ -1372,6 +1518,7 @@ onBeforeUnmount(() => createTask.stopPolling());
 .recent-task__name,
 .recent-task__progress,
 .recent-task__model,
+.recent-task__publish,
 .recent-task__duration {
   display: grid;
   gap: 7px;
@@ -1386,6 +1533,37 @@ onBeforeUnmount(() => createTask.stopPolling());
 .recent-task strong {
   color: #334155;
   font-size: 13px;
+}
+
+.publish-status-pill {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  border-radius: 5px;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.publish-status-pill--published {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.publish-status-pill--archived {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.publish-status-pill--draft {
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.publish-status-pill--empty {
+  background: #fff7ed;
+  color: #ea580c;
 }
 
 .recent-task__actions {

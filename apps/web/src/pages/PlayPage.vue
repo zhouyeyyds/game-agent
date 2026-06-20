@@ -73,6 +73,9 @@
             ref="gameFrameRef"
             :manifest="manifest"
             :error="error"
+            @ready="handleIframeReady"
+            @completed="handleGameCompleted"
+            @error="handleIframeError"
           />
         </template>
 
@@ -183,6 +186,7 @@ import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 
 import { fetchPlayDescriptor } from "@/api/games";
+import { trackEvent } from "@/api/telemetry";
 import type { GameManifest, PlayDescriptor } from "@/api/types";
 import RemoteGameFrame from "@/components/game/RemoteGameFrame.vue";
 import RuntimeInfoPanel from "@/components/game/RuntimeInfoPanel.vue";
@@ -295,26 +299,120 @@ async function loadGame() {
   loading.value = true;
   error.value = null;
   manifest.value = null;
+  void trackEvent({
+    eventType: "play_page_open",
+    entityType: "game",
+    entityId: props.gameId,
+  });
   try {
     descriptor.value = await fetchPlayDescriptor(props.gameId);
+    const startedAt = performance.now();
+    void trackEvent({
+      eventType: "manifest_fetch_start",
+      entityType: "game",
+      entityId: props.gameId,
+      payload: { manifestUrl: descriptor.value.manifestUrl },
+    });
     const response = await fetch(descriptor.value.manifestUrl);
-    if (!response.ok) throw new Error(`Manifest 请求失败: ${response.status}`);
+    if (!response.ok) {
+      void trackEvent({
+        eventType: "manifest_fetch_failed",
+        entityType: "game",
+        entityId: props.gameId,
+        payload: {
+          manifestUrl: descriptor.value.manifestUrl,
+          status: response.status,
+          elapsedMs: Math.round(performance.now() - startedAt),
+        },
+      });
+      throw new Error(`Manifest 请求失败: ${response.status}`);
+    }
     const payload = await response.json();
-    if (!isGameManifest(payload)) throw new Error("Manifest 协议不合法");
+    if (!isGameManifest(payload)) {
+      void trackEvent({
+        eventType: "manifest_fetch_failed",
+        entityType: "game",
+        entityId: props.gameId,
+        payload: {
+          manifestUrl: descriptor.value.manifestUrl,
+          reason: "invalid_manifest",
+          elapsedMs: Math.round(performance.now() - startedAt),
+        },
+      });
+      throw new Error("Manifest 协议不合法");
+    }
     manifest.value = payload;
+    void trackEvent({
+      eventType: "manifest_fetch_success",
+      entityType: "game",
+      entityId: props.gameId,
+      payload: {
+        manifestUrl: descriptor.value.manifestUrl,
+        entryUrl: payload.entryUrl,
+        assetCount: payload.assets.length,
+        elapsedMs: Math.round(performance.now() - startedAt),
+      },
+    });
   } catch (caught) {
     error.value = caught instanceof Error ? caught.message : "加载失败";
+    void trackEvent({
+      eventType: "manifest_fetch_failed",
+      entityType: "game",
+      entityId: props.gameId,
+      payload: { message: error.value },
+    });
   } finally {
     loading.value = false;
   }
 }
 
 function restartGame() {
+  void trackEvent({
+    eventType: "play_restart",
+    entityType: "game",
+    entityId: props.gameId,
+  });
   gameFrameRef.value?.restart();
 }
 
 function requestGameFullscreen() {
+  void trackEvent({
+    eventType: "play_fullscreen",
+    entityType: "game",
+    entityId: props.gameId,
+  });
   gameFrameRef.value?.requestFullscreen();
+}
+
+function handleIframeReady(payload: Record<string, unknown>) {
+  void trackEvent({
+    eventType: "iframe_ready",
+    entityType: "game",
+    entityId: props.gameId,
+    payload: {
+      gameId: manifest.value?.gameId,
+      versionId: manifest.value?.versionId,
+      ...payload,
+    },
+  });
+}
+
+function handleGameCompleted(payload: Record<string, unknown>) {
+  void trackEvent({
+    eventType: "game_completed",
+    entityType: "game",
+    entityId: props.gameId,
+    payload,
+  });
+}
+
+function handleIframeError(payload: Record<string, unknown>) {
+  void trackEvent({
+    eventType: "iframe_error",
+    entityType: "game",
+    entityId: props.gameId,
+    payload,
+  });
 }
 
 function formatPlayCount(count: number) {
