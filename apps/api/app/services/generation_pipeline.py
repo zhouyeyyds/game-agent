@@ -32,7 +32,7 @@ def run_generation_pipeline(task_id: str, user_id: str) -> None:
                     "idea_text": task.idea_text,
                     "asset_ids": task.input_assets_json or [],
                     "repair_attempts": 0,
-                    "validation_errors": [],
+                    "security_errors": [],
                 }
             )
         except Exception as exc:  # noqa: BLE001

@@ -1,12 +1,16 @@
 import json
 from typing import Any
 
-from openai import OpenAI
+from openai import APITimeoutError, OpenAI
 
 from app.core.config import get_settings
 
 
 class LLMConfigurationError(RuntimeError):
+    pass
+
+
+class LLMRequestError(RuntimeError):
     pass
 
 
@@ -30,8 +34,6 @@ def _extract_json_object(text: str) -> dict[str, Any]:
 
 def generate_json(system_prompt: str, user_prompt: str) -> dict[str, Any]:
     settings = get_settings()
-    if settings.llm_provider == "mock":
-        raise LLMConfigurationError("mock provider does not call a remote LLM")
     if settings.llm_provider != "openai_compatible":
         raise LLMConfigurationError(f"Unsupported LLM provider: {settings.llm_provider}")
     if not settings.llm_api_key:
@@ -43,15 +45,21 @@ def generate_json(system_prompt: str, user_prompt: str) -> dict[str, Any]:
         timeout=settings.llm_timeout_seconds,
         max_retries=settings.llm_max_retries,
     )
-    response = client.chat.completions.create(
-        model=settings.llm_model,
-        temperature=settings.llm_temperature,
-        response_format={"type": "json_object"},
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-    )
+    try:
+        response = client.chat.completions.create(
+            model=settings.llm_model,
+            temperature=settings.llm_temperature,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+    except APITimeoutError as exc:
+        raise LLMRequestError(
+            "LLM request timed out after "
+            f"{settings.llm_timeout_seconds} seconds. Increase LLM_TIMEOUT_SECONDS, "
+            "restart the backend, or use a faster model for code generation."
+        ) from exc
     content = response.choices[0].message.content or "{}"
     return _extract_json_object(content)
-

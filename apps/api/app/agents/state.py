@@ -1,6 +1,6 @@
 from typing import Any, TypedDict
 
-from app.schemas.game_spec import GameSpec
+from app.schemas.generated_bundle import GeneratedGameBundle
 
 
 class GenerationState(TypedDict, total=False):
@@ -10,14 +10,13 @@ class GenerationState(TypedDict, total=False):
     asset_ids: list[str]
     asset_context: list[dict[str, Any]]
     idea_brief: dict[str, Any]
+    requirement_profile: dict[str, Any]
     design_doc: dict[str, Any]
-    spec_json: dict[str, Any]
-    spec: GameSpec
-    validation_errors: list[str]
+    bundle_json: dict[str, Any]
+    bundle: GeneratedGameBundle
+    security_errors: list[str]
     repair_attempts: int
-    files: dict[str, str]
     game_id: str
     version_id: str
     manifest_url: str
     error_message: str
-

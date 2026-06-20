@@ -1,11 +1,19 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+API_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[4]
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=(REPO_ROOT / ".env", API_ROOT / ".env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     app_env: str = "development"
     frontend_origin: str = "http://localhost:5173"
@@ -23,12 +31,12 @@ class Settings(BaseSettings):
     minio_bucket: str = "game-agent"
     minio_secure: bool = False
 
-    llm_provider: str = Field(default="mock")
+    llm_provider: str = Field(default="openai_compatible")
     llm_base_url: str | None = None
     llm_api_key: str | None = None
     llm_model: str = "gpt-4.1-mini"
     llm_temperature: float = 0.4
-    llm_timeout_seconds: int = 60
+    llm_timeout_seconds: int = 300
     llm_max_retries: int = 2
     agent_max_repair_attempts: int = 2
 

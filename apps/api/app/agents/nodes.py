@@ -1,16 +1,15 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import UTC, datetime
-from html import escape
 from textwrap import dedent
 from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.agents.llm import LLMConfigurationError, generate_json
+from app.agents.llm import generate_json
 from app.agents.state import GenerationState
-from app.core.config import get_settings
 from app.core.constants import (
     PENDING_STORAGE_VALUE,
     AgentLogLevel,
@@ -20,8 +19,26 @@ from app.core.constants import (
 )
 from app.core.storage import public_object_url, upload_text_object
 from app.models import AgentLog, Asset, Game, GameVersion, GenerationTask, User
-from app.schemas.game_spec import ChoiceSpec, EndingSpec, GameSpec, SceneSpec, ThemeSpec
+from app.schemas.generated_bundle import GeneratedGameBundle
 from app.schemas.manifest import GameManifest, ManifestAsset, ManifestPermissions
+
+SECURITY_PATTERNS: tuple[tuple[str, str], ...] = (
+    (r"<script[^>]+src\s*=\s*['\"]?https?://", "external script src is not allowed"),
+    (r"<link[^>]+href\s*=\s*['\"]?https?://", "external stylesheet href is not allowed"),
+    (r"\bfetch\s*\(", "fetch is not allowed"),
+    (r"\bXMLHttpRequest\b", "XMLHttpRequest is not allowed"),
+    (r"\bWebSocket\b", "WebSocket is not allowed"),
+    (r"\bEventSource\b", "EventSource is not allowed"),
+    (r"\beval\s*\(", "eval is not allowed"),
+    (r"\bnew\s+Function\s*\(", "new Function is not allowed"),
+    (r"\bimport\s*\(", "dynamic import is not allowed"),
+    (r"\bdocument\.cookie\b", "document.cookie is not allowed"),
+    (r"\blocalStorage\b", "localStorage is not allowed"),
+    (r"\bsessionStorage\b", "sessionStorage is not allowed"),
+    (r"<\s*iframe\b", "iframe is not allowed"),
+    (r"<\s*object\b", "object is not allowed"),
+    (r"<\s*embed\b", "embed is not allowed"),
+)
 
 
 def add_log(
@@ -58,202 +75,56 @@ def update_step(
     db.refresh(task)
 
 
-def title_from_prompt(prompt: str) -> str:
-    cleaned = " ".join(prompt.strip().split())
-    if not cleaned:
-        return "Untitled AI Adventure"
-    if len(cleaned) <= 28:
-        return cleaned
-    words = cleaned[:28].split()
-    return f"{' '.join(words[:-1] or words)}..."
+def _contains_any(text: str, markers: tuple[str, ...]) -> bool:
+    lowered = text.lower()
+    return any(marker in lowered for marker in markers)
 
 
-def build_mock_spec(prompt: str) -> GameSpec:
-    title = title_from_prompt(prompt)
-    description = f"An AI-generated interactive story inspired by: {prompt[:140]}"
-    return GameSpec(
-        template="choice_adventure",
-        title=title,
-        description=description,
-        tags=["ai-generated", "choice", "story"],
-        theme=ThemeSpec(background="#10111f", primary="#65e4ff", accent="#ff4fd8"),
-        startSceneId="scene_intro",
-        scenes=[
-            SceneSpec(
-                id="scene_intro",
-                title="The First Spark",
-                body=f"Your idea becomes playable energy: {prompt[:220]}",
-                choices=[
-                    ChoiceSpec(label="Follow the glowing path", nextSceneId="scene_discovery"),
-                    ChoiceSpec(label="Open the mysterious console", nextSceneId="scene_console"),
-                ],
-            ),
-            SceneSpec(
-                id="scene_discovery",
-                title="Discovery Run",
-                body=(
-                    "You move through a world assembled by agents. "
-                    "Every choice reshapes the game draft."
-                ),
-                choices=[ChoiceSpec(label="Finish the prototype", nextSceneId="ending_win")],
-            ),
-            SceneSpec(
-                id="scene_console",
-                title="Agent Console",
-                body=(
-                    "The console displays a validated GameSpec, a manifest, "
-                    "and a remote bundle ready for upload."
-                ),
-                choices=[ChoiceSpec(label="Publish the build", nextSceneId="ending_win")],
-            ),
-        ],
-        endings=[
-            EndingSpec(
-                id="ending_win",
-                title="Prototype Published",
-                body=(
-                    "The generated game is ready to preview, publish, "
-                    "and play from the arcade gallery."
-                ),
-                result="win",
-            )
-        ],
-    )
+def derive_requirement_profile(
+    prompt: str,
+    asset_context: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    asset_context = asset_context or []
+    genre = "custom_web_game"
+    if _contains_any(prompt, ("跑酷", "parkour", "runner", "race", "赛车", "竞速")):
+        genre = "runner"
+    elif _contains_any(prompt, ("贪吃蛇", "snake")):
+        genre = "snake"
+    elif _contains_any(prompt, ("打砖块", "breakout", "brick")):
+        genre = "breakout"
+    elif _contains_any(prompt, ("平台", "platformer", "跳跃")):
+        genre = "platformer"
+    elif _contains_any(prompt, ("射击", "shoot", "bullet", "弹幕", "飞机")):
+        genre = "shooter"
+    elif _contains_any(prompt, ("卡牌", "card", "回合制", "turn")):
+        genre = "turn_based"
+    elif _contains_any(prompt, ("迷宫", "maze", "解谜", "puzzle", "钥匙", "机关")):
+        genre = "puzzle"
 
+    setting = "original"
+    if _contains_any(prompt, ("森林", "forest", "丛林", "jungle")):
+        setting = "forest"
+    elif _contains_any(prompt, ("太空", "space", "星球", "宇宙", "飞船")):
+        setting = "space"
+    elif _contains_any(prompt, ("海底", "ocean", "深海", "水下")):
+        setting = "underwater"
+    elif _contains_any(prompt, ("校园", "school", "教室")):
+        setting = "school"
+    elif _contains_any(prompt, ("恐怖", "horror", "鬼", "诡异")):
+        setting = "haunted"
 
-def render_bundle(spec: GameSpec) -> dict[str, str]:
-    spec_json = spec.model_dump_json().replace("<", "\\u003c")
-    html = f"""<!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{escape(spec.title)}</title>
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <main class="game-shell">
-    <section class="card">
-      <p class="eyebrow">PromptPlay Generated</p>
-      <h1 id="scene-title"></h1>
-      <p id="scene-body"></p>
-      <div id="choices" class="choices"></div>
-    </section>
-  </main>
-  <script id="game-spec" type="application/json">{spec_json}</script>
-  <script src="game.js"></script>
-</body>
-</html>"""
-    js = """const spec = JSON.parse(document.getElementById('game-spec').textContent);
-const scenes = new Map(spec.scenes.map((scene) => [scene.id, scene]));
-const endings = new Map(spec.endings.map((ending) => [ending.id, ending]));
-const titleEl = document.getElementById('scene-title');
-const bodyEl = document.getElementById('scene-body');
-const choicesEl = document.getElementById('choices');
-let startedAt = Date.now();
+    difficulty = "normal"
+    if _contains_any(prompt, ("困难", "hard", "高难", "极限")):
+        difficulty = "hard"
+    elif _contains_any(prompt, ("简单", "easy", "休闲", "轻松")):
+        difficulty = "easy"
 
-function clearChoices() {
-  while (choicesEl.firstChild) choicesEl.removeChild(choicesEl.firstChild);
-}
-
-function addButton(label, onClick) {
-  const button = document.createElement('button');
-  button.textContent = label;
-  button.addEventListener('click', onClick);
-  choicesEl.appendChild(button);
-}
-
-function renderScene(id) {
-  const scene = scenes.get(id);
-  const ending = endings.get(id);
-  clearChoices();
-  if (ending) {
-    titleEl.textContent = ending.title;
-    bodyEl.textContent = ending.body;
-    addButton('Play again', restart);
-    window.parent?.postMessage({
-      type: 'game.completed',
-      result: ending.result,
-      endingId: ending.id,
-      durationMs: Date.now() - startedAt
-    }, '*');
-    return;
-  }
-  if (!scene) {
-    window.parent?.postMessage({ type: 'game.error', message: `Missing scene: ${id}` }, '*');
-    return;
-  }
-  titleEl.textContent = scene.title;
-  bodyEl.textContent = scene.body;
-  scene.choices.forEach((choice) => addButton(choice.label, () => renderScene(choice.nextSceneId)));
-}
-
-function restart() {
-  startedAt = Date.now();
-  renderScene(spec.startSceneId);
-}
-
-window.addEventListener('message', (event) => {
-  if (event.data?.type === 'game.restart') restart();
-});
-
-restart();
-window.parent?.postMessage({ type: 'game.ready', manifestVersion: 'game-manifest-v1' }, '*');
-"""
-    css = "\n".join(
-        [
-            "html, body {",
-            "  margin: 0;",
-            "  min-height: 100%;",
-            "  font-family: Inter, ui-sans-serif, system-ui, sans-serif;",
-            f"  background: {spec.theme.background};",
-            "  color: white;",
-            "}",
-            ".game-shell {",
-            "  min-height: 100vh;",
-            "  display: grid;",
-            "  place-items: center;",
-            "  padding: 32px;",
-            "  background:",
-            f"    radial-gradient(circle at top left, {spec.theme.primary}44, transparent 34%),",
-            f"    radial-gradient(circle at bottom right, {spec.theme.accent}44, transparent 36%);",
-            "}",
-            ".card {",
-            "  width: min(760px, 100%);",
-            "  border: 1px solid rgba(255,255,255,.14);",
-            "  border-radius: 32px;",
-            "  padding: clamp(28px, 6vw, 56px);",
-            "  background: rgba(5, 8, 20, .72);",
-            "  box-shadow: 0 30px 90px rgba(0,0,0,.45);",
-            "  backdrop-filter: blur(18px);",
-            "}",
-            ".eyebrow {",
-            f"  color: {spec.theme.primary};",
-            "  font-weight: 900;",
-            "  text-transform: uppercase;",
-            "  letter-spacing: .28em;",
-            "  font-size: 12px;",
-            "}",
-            "h1 { margin: 12px 0 0; font-size: clamp(36px, 7vw, 76px); line-height: .95; }",
-            "p { color: #cbd5e1; line-height: 1.8; font-size: 18px; }",
-            ".choices { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }",
-            "button {",
-            "  border: 0;",
-            "  border-radius: 999px;",
-            "  padding: 14px 20px;",
-            f"  background: linear-gradient(135deg, {spec.theme.primary}, {spec.theme.accent});",
-            "  color: #05000b;",
-            "  font-weight: 900;",
-            "  cursor: pointer;",
-            "}",
-            "button:hover { transform: translateY(-1px); }",
-        ]
-    )
     return {
-        "index.html": html,
-        "game.js": js,
-        "styles.css": css,
-        "spec.json": json.dumps(spec.model_dump(), ensure_ascii=False, indent=2),
+        "genre": genre,
+        "setting": setting,
+        "difficulty": difficulty,
+        "assetCount": len(asset_context),
+        "sourcePrompt": prompt[:500],
     }
 
 
@@ -277,21 +148,29 @@ def load_asset_context(db: Session, task: GenerationTask) -> list[dict[str, Any]
 
 def idea_analyzer(db: Session, task: GenerationTask, state: GenerationState) -> GenerationState:
     update_step(db, task, TaskStep.IDEA)
-    idea = state["idea_text"]
     asset_context = load_asset_context(db, task)
+    profile = derive_requirement_profile(state["idea_text"], asset_context)
     brief = {
-        "coreIdea": idea[:500],
-        "targetFormat": "choice_adventure",
-        "requiredQualities": ["playable", "clear choices", "reachable ending", "safe text"],
+        "coreIdea": state["idea_text"][:500],
+        "targetFormat": "generated-game-bundle-v1",
+        "genre": profile["genre"],
+        "setting": profile["setting"],
+        "difficulty": profile["difficulty"],
+        "requiredQualities": [
+            "self-contained static web game",
+            "clear controls",
+            "playable win and lose states",
+            "no external resources",
+        ],
     }
     add_log(
         db,
         task,
         "idea_analyzer",
         f"Analyzed creator prompt and found {len(asset_context)} uploaded asset reference(s).",
-        payload={"brief": brief, "assets": asset_context},
+        payload={"brief": brief, "profile": profile, "assets": asset_context},
     )
-    return {"asset_context": asset_context, "idea_brief": brief}
+    return {"asset_context": asset_context, "idea_brief": brief, "requirement_profile": profile}
 
 
 def asset_interpreter(db: Session, task: GenerationTask, state: GenerationState) -> GenerationState:
@@ -299,7 +178,7 @@ def asset_interpreter(db: Session, task: GenerationTask, state: GenerationState)
     interpreted = [
         {
             **asset,
-            "intendedUse": "reference material for theme, characters, or interaction details",
+            "intendedUse": "reference material for theme, mechanics, characters, or UI style",
         }
         for asset in asset_context
     ]
@@ -307,7 +186,7 @@ def asset_interpreter(db: Session, task: GenerationTask, state: GenerationState)
         db,
         task,
         "asset_interpreter",
-        f"Prepared {len(interpreted)} asset reference(s) for the design agent.",
+        f"Prepared {len(interpreted)} asset reference(s) for code generation.",
         payload={"assets": interpreted},
     )
     return {"asset_context": interpreted}
@@ -315,150 +194,184 @@ def asset_interpreter(db: Session, task: GenerationTask, state: GenerationState)
 
 def game_designer(db: Session, task: GenerationTask, state: GenerationState) -> GenerationState:
     update_step(db, task, TaskStep.SPEC)
+    profile = state.get("requirement_profile", derive_requirement_profile(state["idea_text"]))
     design_doc = {
-        "template": "choice_adventure",
-        "sceneCountTarget": 4,
-        "endingCountTarget": 2,
-        "style": "interactive story with concise scenes and meaningful choices",
+        "format": "generated-game-bundle-v1",
+        "genre": profile["genre"],
+        "setting": profile["setting"],
+        "difficulty": profile["difficulty"],
+        "allowedFiles": ["index.html", "game.js", "styles.css", "data/*.json"],
         "constraints": [
-            "Use only safe plain text.",
-            "Every choice must point to an existing scene or ending id.",
-            "At least one ending must be reachable from the start scene.",
+            "Generate a complete playable browser game, not a static mockup.",
+            "Use only vanilla HTML, CSS and JavaScript.",
+            "Do not use external URLs, CDNs, network requests, storage APIs or eval.",
+            "Keep all code self-contained in the returned files.",
+            "Include clear controls, scoring or progress, and win/lose feedback.",
         ],
     }
     add_log(
         db,
         task,
         "game_designer",
-        "Planned game structure, constraints, and validation targets.",
+        "Planned static web bundle constraints and target gameplay.",
         payload=design_doc,
     )
     return {"design_doc": design_doc}
 
 
-SPEC_SYSTEM_PROMPT = dedent(
+BUNDLE_SYSTEM_PROMPT = dedent(
     """
-    You are a game design agent for a web game platform.
-    Return only a JSON object matching game-spec-v1:
-    - template must be "choice_adventure".
-    - title and description must be concise plain text.
-    - tags must be an array of short strings.
-    - theme must contain background, primary, and accent hex colors.
-    - startSceneId must point to an item in scenes.
-    - scenes must contain id, title, body, and choices.
-    - choices must contain label and nextSceneId.
-    - endings must contain id, title, body, and result.
+    You are a senior browser game engineer. Generate a complete, self-contained
+    static web game as one JSON object matching generated-game-bundle-v1.
 
-    Rules: ids must be unique, choices must target existing ids, no script/html/javascript
-    URLs, and at least one ending must be reachable.
+    Required JSON shape:
+    {
+      "schemaVersion": "generated-game-bundle-v1",
+      "title": "string",
+      "description": "string",
+      "tags": ["string"],
+      "entry": "index.html",
+      "permissions": {"network": false, "storage": false, "externalScripts": false},
+      "files": [
+        {"path": "index.html", "contentType": "text/html", "content": "..."},
+        {"path": "game.js", "contentType": "application/javascript", "content": "..."},
+        {"path": "styles.css", "contentType": "text/css", "content": "..."}
+      ]
+    }
+
+    Rules:
+    - Return JSON only. No markdown.
+    - Use only index.html, game.js, styles.css, and optional data/*.json.
+    - Use vanilla browser APIs only. Do not use external libraries.
+    - Keep the bundle compact: prefer exactly index.html, game.js and styles.css.
+    - Keep total generated content under 80 KB unless the user explicitly asks for
+      a larger game.
+    - Build a focused playable prototype with 1-3 core mechanics instead of a
+      large framework or many levels.
+    - Avoid verbose comments, repeated markup and long hard-coded data tables.
+    - Do not use external URLs, CDNs, fetch, XMLHttpRequest, WebSocket, EventSource,
+      eval, new Function, dynamic import, document.cookie, localStorage or sessionStorage.
+    - index.html may only reference local styles.css and game.js.
+    - Make the game clearly reflect the creatorIdea.
+    - The result must be playable with keyboard and/or mouse and include visible
+      objective, controls, progress, win state and lose/restart state.
     """
 ).strip()
 
 
-def spec_writer(db: Session, task: GenerationTask, state: GenerationState) -> GenerationState:
-    settings = get_settings()
-    if settings.llm_provider == "mock":
-        spec = build_mock_spec(state["idea_text"])
-        add_log(db, task, "spec_writer", "Generated mock GameSpec because LLM_PROVIDER=mock.")
-        return {"spec_json": spec.model_dump(), "repair_attempts": 0}
-
+def code_generation_agent(
+    db: Session,
+    task: GenerationTask,
+    state: GenerationState,
+) -> GenerationState:
     user_prompt = json.dumps(
         {
             "creatorIdea": state["idea_text"],
+            "requirementProfile": state.get("requirement_profile", {}),
             "ideaBrief": state.get("idea_brief", {}),
             "assetContext": state.get("asset_context", []),
             "designDoc": state.get("design_doc", {}),
         },
         ensure_ascii=False,
     )
-    spec_json = generate_json(SPEC_SYSTEM_PROMPT, user_prompt)
+    bundle_json = generate_json(BUNDLE_SYSTEM_PROMPT, user_prompt)
     add_log(
         db,
         task,
-        "spec_writer",
-        "Generated GameSpec JSON with the configured OpenAI-compatible model.",
-        payload={"model": settings.llm_model, "title": spec_json.get("title")},
+        "code_generation_agent",
+        "Generated structured static web game bundle with the configured LLM.",
+        payload={
+            "title": bundle_json.get("title"),
+            "fileCount": len(bundle_json.get("files", [])),
+        },
     )
-    return {"spec_json": spec_json, "repair_attempts": 0}
+    return {"bundle_json": bundle_json, "repair_attempts": 0}
 
 
-def spec_reviewer(db: Session, task: GenerationTask, state: GenerationState) -> GenerationState:
+def scan_bundle_security(bundle: GeneratedGameBundle) -> list[str]:
+    errors: list[str] = []
+    for file in bundle.files:
+        for pattern, message in SECURITY_PATTERNS:
+            if re.search(pattern, file.content, flags=re.IGNORECASE):
+                errors.append(f"{file.path}: {message}")
+    index = next(file for file in bundle.files if file.path == "index.html")
+    if "game.js" in {file.path for file in bundle.files} and "game.js" not in index.content:
+        errors.append("index.html must reference local game.js")
+    if "styles.css" in {file.path for file in bundle.files} and "styles.css" not in index.content:
+        errors.append("index.html must reference local styles.css")
+    return errors
+
+
+def bundle_security_scan(
+    db: Session,
+    task: GenerationTask,
+    state: GenerationState,
+) -> GenerationState:
     try:
-        spec = GameSpec.model_validate(state.get("spec_json"))
+        bundle = GeneratedGameBundle.model_validate(state.get("bundle_json"))
+        errors = scan_bundle_security(bundle)
     except Exception as exc:  # noqa: BLE001
-        error = f"{type(exc).__name__}: {exc}"
+        errors = [f"{type(exc).__name__}: {exc}"]
         add_log(
             db,
             task,
-            "spec_reviewer",
-            f"GameSpec validation failed: {error}",
+            "bundle_security_scan",
+            f"Generated bundle validation failed: {errors[0]}",
             AgentLogLevel.WARNING,
         )
-        return {"validation_errors": [error]}
+        return {"security_errors": errors}
+
+    if errors:
+        add_log(
+            db,
+            task,
+            "bundle_security_scan",
+            f"Generated bundle failed security scan with {len(errors)} issue(s).",
+            AgentLogLevel.WARNING,
+            payload={"errors": errors},
+        )
+        return {"security_errors": errors}
+
     add_log(
         db,
         task,
-        "spec_reviewer",
-        f"Validated GameSpec with {len(spec.scenes)} scene(s) and {len(spec.endings)} ending(s).",
+        "bundle_security_scan",
+        f"Validated static bundle with {len(bundle.files)} file(s).",
+        payload=bundle.metadata_json(),
     )
-    return {"spec": spec, "validation_errors": []}
+    return {"bundle": bundle, "security_errors": []}
 
 
-REPAIR_SYSTEM_PROMPT = dedent(
+REPAIR_BUNDLE_SYSTEM_PROMPT = dedent(
     """
-    You repair invalid GameSpec JSON. Return only one complete JSON object matching
-    game-spec-v1. Preserve the creator's idea, fix all validation errors, and do not
-    include markdown.
+    Repair an invalid generated-game-bundle-v1 JSON object. Return JSON only.
+    Preserve the user's game idea and gameplay intent, but fix every validation
+    and security error. Do not use external URLs, network APIs, browser storage,
+    eval, dynamic import, iframe, object or embed.
     """
 ).strip()
 
 
-def repair_spec(db: Session, task: GenerationTask, state: GenerationState) -> GenerationState:
+def repair_bundle(db: Session, task: GenerationTask, state: GenerationState) -> GenerationState:
     attempts = state.get("repair_attempts", 0) + 1
-    settings = get_settings()
-    if settings.llm_provider == "mock":
-        spec = build_mock_spec(state["idea_text"])
-        add_log(
-            db,
-            task,
-            "repair_spec",
-            "Rebuilt mock GameSpec after validation failure.",
-            payload={"attempt": attempts},
-        )
-        return {"spec_json": spec.model_dump(), "repair_attempts": attempts}
-
     user_prompt = json.dumps(
         {
             "creatorIdea": state["idea_text"],
-            "invalidSpec": state.get("spec_json"),
-            "validationErrors": state.get("validation_errors", []),
+            "invalidBundle": state.get("bundle_json"),
+            "securityErrors": state.get("security_errors", []),
+            "designDoc": state.get("design_doc", {}),
         },
         ensure_ascii=False,
     )
-    try:
-        repaired = generate_json(REPAIR_SYSTEM_PROMPT, user_prompt)
-    except LLMConfigurationError:
-        raise
+    repaired = generate_json(REPAIR_BUNDLE_SYSTEM_PROMPT, user_prompt)
     add_log(
         db,
         task,
-        "repair_spec",
-        f"Repaired GameSpec JSON, attempt {attempts}.",
+        "repair_bundle",
+        f"Repaired generated bundle JSON, attempt {attempts}.",
         payload={"attempt": attempts},
     )
-    return {"spec_json": repaired, "repair_attempts": attempts}
-
-
-def render_node(db: Session, task: GenerationTask, state: GenerationState) -> GenerationState:
-    update_step(db, task, TaskStep.RENDER)
-    files = render_bundle(state["spec"])
-    add_log(
-        db,
-        task,
-        "renderer",
-        "Rendered index.html, game.js, styles.css and spec.json from GameSpec.",
-    )
-    return {"files": files}
+    return {"bundle_json": repaired, "repair_attempts": attempts}
 
 
 def upload_node(db: Session, task: GenerationTask, state: GenerationState) -> GenerationState:
@@ -467,14 +380,14 @@ def upload_node(db: Session, task: GenerationTask, state: GenerationState) -> Ge
     if not user:
         raise RuntimeError("User not found")
 
-    spec = state["spec"]
+    bundle = state["bundle"]
     game = Game(
         owner_user_id=user.id,
-        title=spec.title,
-        description=spec.description,
+        title=bundle.title,
+        description=bundle.description,
         cover_url=None,
         status=str(GameStatus.DRAFT),
-        tags=spec.tags,
+        tags=bundle.tags,
     )
     db.add(game)
     db.flush()
@@ -485,7 +398,7 @@ def upload_node(db: Session, task: GenerationTask, state: GenerationState) -> Ge
         game_id=game.id,
         generation_task_id=task.id,
         version_number=1,
-        game_spec_json=spec.model_dump(),
+        game_spec_json=bundle.metadata_json(),
         manifest_url=PENDING_STORAGE_VALUE,
         bundle_url=PENDING_STORAGE_VALUE,
         storage_prefix=PENDING_STORAGE_VALUE,
@@ -494,34 +407,23 @@ def upload_node(db: Session, task: GenerationTask, state: GenerationState) -> Ge
     db.flush()
 
     prefix = f"games/{game.id}/versions/{version.id}"
-    files = state["files"]
-    upload_text_object(f"{prefix}/index.html", files["index.html"], "text/html")
-    upload_text_object(f"{prefix}/game.js", files["game.js"], "application/javascript")
-    upload_text_object(f"{prefix}/styles.css", files["styles.css"], "text/css")
-    upload_text_object(f"{prefix}/spec.json", files["spec.json"], "application/json")
+    for file in bundle.files:
+        upload_text_object(f"{prefix}/{file.path}", file.content, file.contentType)
 
     manifest = GameManifest(
         gameId=game.id,
         versionId=version.id,
-        title=spec.title,
+        title=bundle.title,
         entry="index.html",
         entryUrl=public_object_url(f"{prefix}/index.html"),
         assets=[
             ManifestAsset(
-                name="game.js",
-                url=public_object_url(f"{prefix}/game.js"),
-                contentType="application/javascript",
-            ),
-            ManifestAsset(
-                name="styles.css",
-                url=public_object_url(f"{prefix}/styles.css"),
-                contentType="text/css",
-            ),
-            ManifestAsset(
-                name="spec.json",
-                url=public_object_url(f"{prefix}/spec.json"),
-                contentType="application/json",
-            ),
+                name=file.path,
+                url=public_object_url(f"{prefix}/{file.path}"),
+                contentType=file.contentType,
+            )
+            for file in bundle.files
+            if file.path != "index.html"
         ],
         permissions=ManifestPermissions(network=False, storage=False),
     )
@@ -537,7 +439,7 @@ def upload_node(db: Session, task: GenerationTask, state: GenerationState) -> Ge
     game.current_version_id = version.id
     task.result_manifest_url = manifest_url
     db.commit()
-    add_log(db, task, "uploader", f"Uploaded remote bundle to MinIO prefix: {prefix}.")
+    add_log(db, task, "uploader", f"Uploaded generated bundle to MinIO prefix: {prefix}.")
     return {"game_id": game.id, "version_id": version.id, "manifest_url": manifest_url}
 
 
