@@ -1,8 +1,10 @@
-# Runtime Protocol
+# 远端产物协议
 
 ## Game Manifest v1
 
-Play 页面通过 `GET /api/games/{gameId}/play` 获取 manifest URL，再 fetch manifest。
+Play 页面会先调用 `GET /api/games/{gameId}/play` 获取 play descriptor。descriptor 中包含 `manifestUrl`，前端随后从 MinIO 或其他 S3-compatible 对象存储拉取远端 manifest。
+
+manifest 示例：
 
 ```json
 {
@@ -20,17 +22,37 @@ Play 页面通过 `GET /api/games/{gameId}/play` 获取 manifest URL，再 fetch
 }
 ```
 
-## iframe sandbox
+后端返回的 play descriptor 示例：
 
-Generated games run inside:
+```json
+{
+  "gameId": "...",
+  "title": "...",
+  "runtime": "iframe_manifest_v1",
+  "manifestUrl": "http://192.168.150.101:19000/game-agent/games/.../manifest.json",
+  "storagePrefix": "games/.../versions/...",
+  "sandbox": {
+    "allowScripts": true,
+    "allowSameOrigin": false,
+    "allowForms": false,
+    "allowPopups": false
+  }
+}
+```
+
+## iframe 沙箱
+
+生成游戏在以下 iframe 中运行：
 
 ```html
 <iframe sandbox="allow-scripts"></iframe>
 ```
 
-## postMessage
+当前运行时刻意不启用 `allow-same-origin`、`allow-forms`、`allow-popups`，避免生成代码获得更高浏览器权限。
 
-Game to parent:
+## postMessage 协议
+
+游戏向父页面发送：
 
 ```json
 { "type": "game.ready" }
@@ -38,8 +60,26 @@ Game to parent:
 { "type": "game.error", "message": "..." }
 ```
 
-Parent to game:
+父页面向游戏发送：
 
 ```json
 { "type": "game.restart" }
 ```
+
+## Play 埋点
+
+Play 页面会上报：
+
+```text
+manifest_fetch_start
+manifest_fetch_success
+manifest_fetch_failed
+iframe_ready
+game_completed
+iframe_error
+play_restart
+play_fullscreen
+```
+
+这些事件会发送到 `POST /api/telemetry/events`，payload 中包含 `gameId`、manifest URL、加载耗时、iframe 消息内容或错误详情。
+
