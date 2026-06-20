@@ -19,6 +19,10 @@ class GenerationTaskResponse(BaseModel):
     assetIds: list[str]
     result: TaskResult
     errorMessage: str | None = None
+    createdAt: str | None = None
+    startedAt: str | None = None
+    finishedAt: str | None = None
+    retriedFromTaskId: str | None = None
 
 
 class AgentLogResponse(BaseModel):

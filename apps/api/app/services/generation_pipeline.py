@@ -1,14 +1,18 @@
 from datetime import UTC, datetime
 
 from app.agents.graph import build_generation_graph
+from app.agents.nodes import GenerationCanceled
 from app.core.constants import AgentLogLevel, TaskStatus
 from app.models import AgentLog, GenerationTask, User
 
 
 def should_skip_task(task: GenerationTask) -> bool:
-    if task.status == TaskStatus.SUCCEEDED and task.result_game_id:
-        return True
-    if task.status == TaskStatus.FAILED:
+    terminal_statuses = {
+        str(TaskStatus.SUCCEEDED),
+        str(TaskStatus.FAILED),
+        str(TaskStatus.CANCELED),
+    }
+    if task.status in terminal_statuses:
         return True
     if task.result_game_id:
         return True
@@ -35,7 +39,20 @@ def run_generation_pipeline(task_id: str, user_id: str) -> None:
                     "security_errors": [],
                 }
             )
+        except GenerationCanceled:
+            task.status = str(TaskStatus.CANCELED)
+            if not task.error_message:
+                task.error_message = "Generation task was canceled by the creator."
+            if not task.finished_at:
+                task.finished_at = datetime.now(UTC)
+            db.commit()
         except Exception as exc:  # noqa: BLE001
+            db.refresh(task)
+            if task.status == str(TaskStatus.CANCELED):
+                if not task.finished_at:
+                    task.finished_at = datetime.now(UTC)
+                db.commit()
+                return
             task.status = str(TaskStatus.FAILED)
             task.error_message = f"{type(exc).__name__}: {exc}"
             task.finished_at = datetime.now(UTC)

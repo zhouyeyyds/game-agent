@@ -12,6 +12,7 @@ class GenerationTask(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
+    retried_from_task_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     status: Mapped[str] = mapped_column(String(32), default="pending", index=True)
     idea_text: Mapped[str] = mapped_column(Text, nullable=False)
     input_assets_json: Mapped[list[str]] = mapped_column(JSON, default=list)

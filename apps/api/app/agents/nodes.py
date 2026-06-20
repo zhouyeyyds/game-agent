@@ -41,6 +41,16 @@ SECURITY_PATTERNS: tuple[tuple[str, str], ...] = (
 )
 
 
+class GenerationCanceled(RuntimeError):
+    pass
+
+
+def ensure_task_not_canceled(db: Session, task: GenerationTask) -> None:
+    db.refresh(task)
+    if task.status == TaskStatus.CANCELED:
+        raise GenerationCanceled("Generation task was canceled")
+
+
 def add_log(
     db: Session,
     task: GenerationTask,
@@ -67,6 +77,7 @@ def update_step(
     step: str,
     status: TaskStatus = TaskStatus.RUNNING,
 ) -> None:
+    ensure_task_not_canceled(db, task)
     task.status = str(status)
     task.current_step = str(step)
     if not task.started_at:
@@ -275,6 +286,7 @@ def code_generation_agent(
         ensure_ascii=False,
     )
     bundle_json = generate_json(BUNDLE_SYSTEM_PROMPT, user_prompt)
+    ensure_task_not_canceled(db, task)
     add_log(
         db,
         task,
@@ -364,6 +376,7 @@ def repair_bundle(db: Session, task: GenerationTask, state: GenerationState) -> 
         ensure_ascii=False,
     )
     repaired = generate_json(REPAIR_BUNDLE_SYSTEM_PROMPT, user_prompt)
+    ensure_task_not_canceled(db, task)
     add_log(
         db,
         task,
@@ -376,6 +389,7 @@ def repair_bundle(db: Session, task: GenerationTask, state: GenerationState) -> 
 
 def upload_node(db: Session, task: GenerationTask, state: GenerationState) -> GenerationState:
     update_step(db, task, TaskStep.UPLOAD)
+    ensure_task_not_canceled(db, task)
     user = db.get(User, state["user_id"])
     if not user:
         raise RuntimeError("User not found")
@@ -408,8 +422,10 @@ def upload_node(db: Session, task: GenerationTask, state: GenerationState) -> Ge
 
     prefix = f"games/{game.id}/versions/{version.id}"
     for file in bundle.files:
+        ensure_task_not_canceled(db, task)
         upload_text_object(f"{prefix}/{file.path}", file.content, file.contentType)
 
+    ensure_task_not_canceled(db, task)
     manifest = GameManifest(
         gameId=game.id,
         versionId=version.id,
@@ -444,6 +460,7 @@ def upload_node(db: Session, task: GenerationTask, state: GenerationState) -> Ge
 
 
 def finalizer(db: Session, task: GenerationTask, state: GenerationState) -> GenerationState:
+    ensure_task_not_canceled(db, task)
     task.status = str(TaskStatus.SUCCEEDED)
     task.current_step = str(TaskStep.READY)
     task.finished_at = datetime.now(UTC)

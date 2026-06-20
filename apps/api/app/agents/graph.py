@@ -18,7 +18,10 @@ def _bind(
     node: NodeFn,
 ) -> Callable[[GenerationState], dict[str, Any]]:
     def wrapped(state: GenerationState) -> dict[str, Any]:
-        return dict(node(db, task, state))
+        nodes.ensure_task_not_canceled(db, task)
+        result = dict(node(db, task, state))
+        nodes.ensure_task_not_canceled(db, task)
+        return result
 
     return wrapped
 
