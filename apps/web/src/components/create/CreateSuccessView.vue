@@ -1,10 +1,18 @@
 <template>
   <div class="publish-layout">
     <section class="publish-main">
+      <div class="task-view-head">
+        <p class="breadcrumb">Create / 生成完成</p>
+        <el-button text @click="emit('back-to-create')">返回创建中心</el-button>
+      </div>
+
       <section class="success-banner">
-        <div>
-          <span>生成完成</span>
-          <div>
+        <div class="success-banner__content">
+          <span class="success-banner__badge">
+            <i><el-icon><Check /></el-icon></i>
+            生成完成
+          </span>
+          <div class="success-banner__copy">
             <h1>恭喜！你的游戏已生成完成</h1>
             <p>预览游戏效果，完善信息后即可发布，让更多玩家体验你的作品。</p>
           </div>
@@ -43,9 +51,16 @@
           </el-form-item>
           <el-form-item label="封面">
             <div class="cover-field">
-              <img :src="referenceImages.playRunningImage" alt="" />
+              <img :src="coverUrl" alt="" />
               <div>
-                <el-button>更换封面</el-button>
+                <el-upload
+                  accept="image/*"
+                  :auto-upload="false"
+                  :show-file-list="false"
+                  :on-change="handleCoverChange"
+                >
+                  <el-button :loading="coverUploading">更换封面</el-button>
+                </el-upload>
                 <p>建议尺寸：16:9，JPG/PNG，≤5MB</p>
               </div>
             </div>
@@ -61,10 +76,32 @@
           </el-form-item>
           <el-form-item label="标签">
             <div class="publish-tags">
-              <el-tag v-for="tag in publishTags" :key="tag" closable>{{
-                tag
-              }}</el-tag>
-              <el-button size="small" :icon="Plus">添加标签</el-button>
+              <el-tag
+                v-for="tag in publishTags"
+                :key="tag"
+                closable
+                @close="emit('remove-tag', tag)"
+              >
+                {{ tag }}
+              </el-tag>
+              <el-input
+                v-if="addingTag"
+                ref="tagInputRef"
+                v-model="draftTag"
+                class="publish-tags__input"
+                size="small"
+                maxlength="12"
+                @keyup.enter="submitTag"
+                @blur="submitTag"
+              />
+              <el-button
+                v-else
+                size="small"
+                :icon="Plus"
+                @click="showTagInput"
+              >
+                添加标签
+              </el-button>
             </div>
           </el-form-item>
         </el-form>
@@ -91,11 +128,12 @@
 </template>
 
 <script setup lang="ts">
-import { CopyDocument, Loading, Plus } from "@element-plus/icons-vue";
+import { Check, CopyDocument, Loading, Plus } from "@element-plus/icons-vue";
+import type { UploadFile } from "element-plus";
+import { nextTick, ref } from "vue";
 
 import type { GameManifest } from "@/api/types";
 import RemoteGameFrame from "@/components/game/RemoteGameFrame.vue";
-import { referenceImages } from "@/data/showcase";
 
 interface InfoRow {
   label: string;
@@ -110,15 +148,44 @@ const publishDescription = defineModel<string>("publishDescription", {
 
 defineProps<{
   previewManifest: GameManifest | null;
+  coverUrl: string;
+  coverUploading: boolean;
   publishTags: string[];
   buildInfoRows: InfoRow[];
   publishing: boolean;
 }>();
 
 const emit = defineEmits<{
+  "back-to-create": [];
   "back-to-edit": [];
   regenerate: [];
   publish: [];
   copy: [value: string];
+  "upload-cover": [file: File];
+  "add-tag": [tag: string];
+  "remove-tag": [tag: string];
 }>();
+
+const addingTag = ref(false);
+const draftTag = ref("");
+const tagInputRef = ref<HTMLInputElement | null>(null);
+
+function handleCoverChange(uploadFile: UploadFile) {
+  const file = uploadFile.raw;
+  if (!file || !file.type.startsWith("image/")) return;
+  emit("upload-cover", file);
+}
+
+async function showTagInput() {
+  addingTag.value = true;
+  await nextTick();
+  tagInputRef.value?.focus?.();
+}
+
+function submitTag() {
+  const tag = draftTag.value.trim();
+  if (tag) emit("add-tag", tag);
+  draftTag.value = "";
+  addingTag.value = false;
+}
 </script>

@@ -1,17 +1,22 @@
 <template>
   <div class="task-layout">
     <section class="task-main">
-      <p class="breadcrumb">Create / 生成任务</p>
+      <div class="task-view-head">
+        <p class="breadcrumb">Create / 生成任务</p>
+        <el-button text @click="emit('back-to-create')">返回创建中心</el-button>
+      </div>
 
-      <section class="task-idea-card">
+      <section class="task-idea-card running-idea-card">
         <div class="task-idea-card__content">
           <div class="card-label">
             <el-icon><VideoPlay /></el-icon> 我的游戏创意
           </div>
-          <h1>{{ taskTitle }}</h1>
-          <button type="button" class="edit-icon">
-            <el-icon><EditPen /></el-icon>
-          </button>
+          <div class="task-title-row">
+            <h1>{{ taskTitle }}</h1>
+            <button type="button" class="edit-icon">
+              <el-icon><EditPen /></el-icon>
+            </button>
+          </div>
           <h3>创意描述</h3>
           <p>{{ task.ideaText }}</p>
           <h3>玩法类型</h3>
@@ -46,16 +51,24 @@
         </div>
       </section>
 
-      <section class="workflow-card">
+      <section class="workflow-card running-workflow-card">
         <div class="workflow-card__head">
           <h2>
             <el-icon><Box /></el-icon> AI 多智能体工作流
           </h2>
           <div class="workflow-stats">
-            <span>等待中 {{ workflowCounts.waiting }}</span>
-            <span class="running">运行中 {{ workflowCounts.running }}</span>
-            <span class="done">已完成 {{ workflowCounts.done }}</span>
-            <span class="failed">失败 {{ workflowCounts.failed }}</span>
+            <span class="waiting"
+              >等待中 <b>{{ workflowCounts.waiting }}</b></span
+            >
+            <span class="running"
+              >运行中 <b>{{ workflowCounts.running }}</b></span
+            >
+            <span class="done"
+              >已完成 <b>{{ workflowCounts.done }}</b></span
+            >
+            <span class="failed"
+              >失败 <b>{{ workflowCounts.failed }}</b></span
+            >
           </div>
         </div>
         <div class="workflow-steps">
@@ -91,22 +104,19 @@
           <p>
             {{ currentWorkflowStep?.description || "Agent 正在准备生成任务。" }}
           </p>
-          <em>预计剩余时间 8 分钟</em>
         </div>
       </section>
 
-      <section class="log-card">
+      <section class="log-card running-log-card">
         <div class="log-card__head">
           <h2>智能体执行日志</h2>
-          <div>
-            <span>实时日志</span><el-switch v-model="realtimeLogs" />
-          </div>
+          <div><span>实时日志</span><el-switch v-model="realtimeLogs" /></div>
         </div>
         <div class="log-list">
           <article
             v-for="item in executionCards"
             :key="item.key"
-            :class="{ active: item.state === 'running' }"
+            :class="[item.state, { active: item.state === 'running' }]"
           >
             <div class="log-list__top">
               <strong
@@ -122,9 +132,6 @@
             </div>
           </article>
         </div>
-        <button type="button" class="expand-logs">
-          展开实时日志 <el-icon><ArrowDown /></el-icon>
-        </button>
       </section>
     </section>
 
@@ -137,16 +144,7 @@
         <h2><span class="fire-dot">●</span> 资源消耗</h2>
         <InfoList :rows="resourceRows" @copy="emit('copy', $event)" />
       </section>
-      <section class="side-card">
-        <h2>生成产物（预测）</h2>
-        <div class="artifact-grid">
-          <div v-for="artifact in artifactCards" :key="artifact.name">
-            <el-icon><component :is="artifact.icon" /></el-icon>
-            <strong>{{ artifact.name }}</strong>
-            <span>{{ artifact.status }}</span>
-          </div>
-        </div>
-      </section>
+
       <div class="task-side__actions">
         <el-button
           type="danger"
@@ -242,6 +240,7 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{
+  "back-to-create": [];
   "cancel-current": [];
   regenerate: [];
   copy: [value: string];

@@ -10,11 +10,11 @@
         >
           返回
         </el-button>
-        <img :src="coverImage" alt="" class="play-page__cover" />
+
         <div class="play-page__title-copy">
           <div class="play-page__heading-row">
             <h1>{{ gameTitle }}</h1>
-            <span class="play-page__badge play-page__badge--ai">AI 生成</span>
+
             <span class="play-page__badge" :class="statusBadgeClass">{{
               statusLabel
             }}</span>

@@ -10,9 +10,11 @@
             maxlength="3000"
             resize="none"
             class="prompt-input"
-            placeholder="尽可能详细地描述你的游戏创意，Agent 会理解并生成完整的游戏内容。"
           />
-          <div v-if="!idea" class="prompt-hints">
+          <div v-if="!idea" class="prompt-hints mb-10">
+            <p class="prompt-hints__lead">
+              尽可能详细地描述你的游戏创意，Agent 会理解并生成完整的游戏内容。
+            </p>
             <p>
               <el-icon><Compass /></el-icon>
               游戏概念：例如世界观、背景故事、核心玩法
@@ -30,21 +32,15 @@
               角色与设定：例如主角、NPC、敌人、道具等
             </p>
             <p>
-              <el-icon><Aim /></el-icon> 胜利 /
-              失败条件：例如通关条件、失败判定
+              <el-icon><Aim /></el-icon> 胜利 / 失败条件：例如通关条件、失败判定
             </p>
             <p>
               <el-icon><Picture /></el-icon>
               参考素材：可描述如何使用上传的图片 / 文件 / 视频作为参考
             </p>
           </div>
-          <div class="prompt-actions">
+          <div class="prompt-actions mt-sm">
             <div class="prompt-actions__left">
-              <button type="button" class="prompt-tool-icon">
-                <el-icon><CircleCheckFilled /></el-icon>
-              </button>
-              <span class="prompt-divider" />
-              <el-button text :icon="Plus">插入参考</el-button>
               <el-button
                 text
                 :icon="MagicStick"
@@ -96,8 +92,8 @@
               <el-icon><Plus /></el-icon>
               <strong>点击上传或拖拽到此处</strong>
               <span
-                >支持 JPG / PNG / GIF / MP4 / WebM / PDF /
-                DOCX，单个文件不超过 100MB</span
+                >支持 JPG / PNG / GIF / MP4 / WebM / PDF / DOCX，单个文件不超过
+                100MB</span
               >
             </div>
           </el-upload>
@@ -135,7 +131,10 @@
       <section class="recent-task">
         <div class="recent-task__head">
           <h2>任务历史</h2>
-          <el-button text :loading="historyLoading" @click="emit('load-history')"
+          <el-button
+            text
+            :loading="historyLoading"
+            @click="emit('load-history')"
             >刷新</el-button
           >
         </div>
@@ -160,7 +159,10 @@
             </div>
             <div class="recent-task__progress">
               <span>{{ taskStatusLabel(task.status) }}</span>
-              <el-progress :percentage="taskProgressFor(task)" :show-text="false" />
+              <el-progress
+                :percentage="taskProgressFor(task)"
+                :show-text="false"
+              />
             </div>
             <div class="recent-task__model">
               <span>结果</span>
