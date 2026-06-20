@@ -1,46 +1,44 @@
 <template>
-  <div class="space-y-4">
-    <el-alert v-if="error" type="error" title="远程游戏加载失败" :closable="false" show-icon>
+  <div class="remote-game-frame" ref="shellRef">
+    <el-alert
+      v-if="error"
+      type="error"
+      title="远程游戏加载失败"
+      :closable="false"
+      show-icon
+    >
       {{ error }}
     </el-alert>
 
-    <div v-else class="relative overflow-hidden rounded-lg border border-slate-200 bg-slate-950 shadow-sm">
-      <div class="absolute inset-x-0 top-0 z-10 flex items-center justify-between bg-black/35 px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-white/80 backdrop-blur">
-        <span>AgentPlay Runtime</span>
-        <span>{{ statusText }}</span>
-      </div>
+    <div v-else class="remote-game-frame__stage">
       <iframe
         v-if="manifest"
         ref="frameRef"
-        class="h-[68vh] min-h-[560px] w-full border-0 pt-10"
+        class="remote-game-frame__iframe"
         sandbox="allow-scripts"
         :src="manifest.entryUrl"
         :title="manifest.title"
       />
-      <div v-else class="relative flex h-[68vh] min-h-[560px] flex-col items-center justify-center gap-5 overflow-hidden">
-        <img :src="referenceImages.playLoadingImage" alt="" class="absolute inset-0 h-full w-full object-cover object-left-top opacity-35" />
-        <div class="relative z-10 text-center text-white">
-          <div class="mx-auto mb-6 grid h-20 w-20 place-items-center rounded-full bg-white/10 backdrop-blur">
+      <div v-else class="remote-game-frame__loading">
+        <img
+          :src="referenceImages.playLoadingImage"
+          alt=""
+          class="remote-game-frame__loading-image"
+        />
+        <div class="remote-game-frame__loading-content">
+          <div class="remote-game-frame__spinner">
             <el-icon class="is-loading" size="38"><Loading /></el-icon>
           </div>
-          <h3 class="m-0 text-3xl font-semibold">正在加载游戏...</h3>
-          <p class="mt-4 text-sm text-white/70">首次加载可能需要一些时间，请稍候。</p>
+          <h3>正在加载游戏...</h3>
+          <p>首次加载可能需要一些时间，请稍候。</p>
         </div>
-      </div>
-    </div>
-
-    <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-600">
-      <span>运行状态：<strong>{{ statusText }}</strong></span>
-      <div class="flex gap-2">
-        <el-button size="small" :icon="Refresh" @click="restart">重新开始</el-button>
-        <el-button size="small" :icon="FullScreen">全屏</el-button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { FullScreen, Loading, Refresh } from '@element-plus/icons-vue'
+import { Loading } from '@element-plus/icons-vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import type { GameManifest } from '@/api/types'
@@ -51,6 +49,7 @@ const props = defineProps<{
   error?: string | null
 }>()
 
+const shellRef = ref<HTMLDivElement | null>(null)
 const frameRef = ref<HTMLIFrameElement | null>(null)
 const gameStatus = ref<'loading' | 'ready' | 'completed' | 'error'>('loading')
 
@@ -88,6 +87,96 @@ function restart() {
   gameStatus.value = 'loading'
 }
 
+async function requestFullscreen() {
+  const target = shellRef.value
+  if (!target?.requestFullscreen) return
+
+  try {
+    await target.requestFullscreen()
+  } catch {
+    // Fullscreen can be denied by browser policy; keep the control non-disruptive.
+  }
+}
+
+defineExpose({
+  requestFullscreen,
+  restart,
+  statusText,
+})
+
 onMounted(() => window.addEventListener('message', handleMessage))
 onBeforeUnmount(() => window.removeEventListener('message', handleMessage))
 </script>
+
+<style scoped>
+.remote-game-frame {
+  overflow: hidden;
+  border: 1px solid #dce4f0;
+  border-radius: 8px;
+  background: #0f172a;
+  box-shadow: 0 8px 22px rgba(31, 42, 68, 0.06);
+}
+
+.remote-game-frame__stage {
+  min-height: 560px;
+  height: min(68vh, 720px);
+}
+
+.remote-game-frame__iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #0f172a;
+}
+
+.remote-game-frame__loading {
+  position: relative;
+  display: flex;
+  height: 100%;
+  min-height: 560px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.remote-game-frame__loading-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: left top;
+  opacity: 0.38;
+}
+
+.remote-game-frame__loading-content {
+  position: relative;
+  z-index: 1;
+  color: #fff;
+  text-align: center;
+}
+
+.remote-game-frame__spinner {
+  display: grid;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 24px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+}
+
+.remote-game-frame__loading h3 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.remote-game-frame__loading p {
+  margin: 14px 0 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 14px;
+}
+</style>
