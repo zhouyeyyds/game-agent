@@ -1,29 +1,20 @@
 <template>
-  <NConfigProvider :theme="darkTheme">
-    <NMessageProvider>
-      <NDialogProvider>
-        <NLayout class="min-h-screen bg-ink text-white">
-          <NLayoutHeader bordered class="border-white/10 bg-ink/90 backdrop-blur">
-            <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-              <RouterLink to="/" class="text-xl font-bold text-white no-underline">
-                PromptPlay AI
-              </RouterLink>
-              <nav class="flex items-center gap-3">
-                <RouterLink to="/" class="text-slate-300 no-underline hover:text-white">Home</RouterLink>
-                <RouterLink to="/create" class="text-slate-300 no-underline hover:text-white">Create</RouterLink>
-                <RouterLink to="/login" class="text-slate-300 no-underline hover:text-white">Login</RouterLink>
-              </nav>
-            </div>
-          </NLayoutHeader>
-          <NLayoutContent>
-            <RouterView />
-          </NLayoutContent>
-        </NLayout>
-      </NDialogProvider>
-    </NMessageProvider>
-  </NConfigProvider>
+  <el-container class="app-shell" :class="{ 'app-shell--auth': hideHeader }">
+    <el-header v-if="!hideHeader" class="app-shell__header">
+      <AppHeader />
+    </el-header>
+    <el-main class="app-shell__main" :class="{ 'app-shell__main--auth': hideHeader }">
+      <RouterView />
+    </el-main>
+  </el-container>
 </template>
 
 <script setup lang="ts">
-import { darkTheme, NConfigProvider, NDialogProvider, NLayout, NLayoutContent, NLayoutHeader, NMessageProvider } from 'naive-ui'
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+
+import AppHeader from '@/components/layout/AppHeader.vue'
+
+const route = useRoute()
+const hideHeader = computed(() => route.meta.hideHeader === true)
 </script>

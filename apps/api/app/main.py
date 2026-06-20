@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import auth, games, health
+from app.api.routes import assets, auth, games, generation_tasks, health
 from app.core.config import get_settings
 from app.core.database import Base, engine
 from app.core.storage import ensure_bucket
@@ -32,6 +32,8 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(auth.router, prefix="/api")
     app.include_router(games.router, prefix="/api")
+    app.include_router(assets.router, prefix="/api")
+    app.include_router(generation_tasks.router, prefix="/api")
     return app
 
 

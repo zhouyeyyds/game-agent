@@ -11,8 +11,8 @@ export const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', name: 'home', component: HomePage },
-    { path: '/login', name: 'login', component: LoginPage },
-    { path: '/register', name: 'register', component: RegisterPage },
+    { path: '/login', name: 'login', component: LoginPage, meta: { hideHeader: true } },
+    { path: '/register', name: 'register', component: RegisterPage, meta: { hideHeader: true } },
     { path: '/create', name: 'create', component: CreatePage, meta: { requiresAuth: true } },
     { path: '/play/:gameId', name: 'play', component: PlayPage, props: true },
   ],

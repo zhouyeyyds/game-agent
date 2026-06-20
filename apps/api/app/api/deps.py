@@ -1,4 +1,4 @@
-from fastapi import Cookie, Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -8,13 +8,11 @@ from app.models import User
 
 
 def get_current_user(
+    request: Request,
     db: Session = Depends(get_db),
-    game_agent_session: str | None = Cookie(default=None),
 ) -> User:
     settings = get_settings()
-    token = game_agent_session
-    if settings.jwt_cookie_name != "game_agent_session":
-        token = game_agent_session
+    token = request.cookies.get(settings.jwt_cookie_name)
 
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")

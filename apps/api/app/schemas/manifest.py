@@ -1,10 +1,12 @@
-from pydantic import BaseModel, Field
+from typing import Literal
+
+from pydantic import BaseModel, Field, model_validator
 
 
 class ManifestAsset(BaseModel):
-    name: str
-    url: str
-    contentType: str
+    name: str = Field(min_length=1, max_length=160)
+    url: str = Field(min_length=1, max_length=1024)
+    contentType: str = Field(min_length=1, max_length=120)
 
 
 class ManifestPermissions(BaseModel):
@@ -13,11 +15,18 @@ class ManifestPermissions(BaseModel):
 
 
 class GameManifest(BaseModel):
-    schemaVersion: str = Field(default="game-manifest-v1")
-    gameId: str
-    versionId: str
-    title: str
-    entry: str
-    entryUrl: str
-    assets: list[ManifestAsset]
+    schemaVersion: Literal["game-manifest-v1"] = "game-manifest-v1"
+    gameId: str = Field(min_length=1)
+    versionId: str = Field(min_length=1)
+    title: str = Field(min_length=1, max_length=200)
+    entry: Literal["index.html"] = "index.html"
+    entryUrl: str = Field(min_length=1, max_length=1024)
+    assets: list[ManifestAsset] = Field(default_factory=list)
     permissions: ManifestPermissions = Field(default_factory=ManifestPermissions)
+
+    @model_validator(mode="after")
+    def validate_assets(self) -> "GameManifest":
+        names = [asset.name for asset in self.assets]
+        if len(names) != len(set(names)):
+            raise ValueError("manifest asset names must be unique")
+        return self

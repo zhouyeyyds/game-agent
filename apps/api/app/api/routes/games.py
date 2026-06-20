@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
+from app.core.constants import GameStatus
 from app.core.database import get_db
 from app.models import Game, GameVersion
 from app.schemas.game import AuthorResponse, GameListItem, PlayDescriptor, SandboxConfig
@@ -11,7 +12,7 @@ router = APIRouter(prefix="/games", tags=["games"])
 
 @router.get("", response_model=list[GameListItem])
 def list_games(
-    status_filter: str = Query(default="published", alias="status"),
+    status_filter: str = Query(default=str(GameStatus.PUBLISHED), alias="status"),
     db: Session = Depends(get_db),
 ) -> list[GameListItem]:
     games = db.scalars(
@@ -36,7 +37,7 @@ def list_games(
 @router.get("/{game_id}/play", response_model=PlayDescriptor)
 def get_play_descriptor(game_id: str, db: Session = Depends(get_db)) -> PlayDescriptor:
     game = db.get(Game, game_id)
-    if not game or game.status != "published":
+    if not game or game.status != GameStatus.PUBLISHED:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found")
 
     version = db.get(GameVersion, game.current_version_id) if game.current_version_id else None

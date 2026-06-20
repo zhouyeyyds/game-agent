@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     minio_secure: bool = False
 
     llm_provider: str = Field(default="mock")
+    llm_base_url: str | None = None
+    llm_api_key: str | None = None
+    llm_model: str = "gpt-4.1-mini"
+    llm_temperature: float = 0.4
+    llm_timeout_seconds: int = 60
+    llm_max_retries: int = 2
+    agent_max_repair_attempts: int = 2
 
 
 @lru_cache

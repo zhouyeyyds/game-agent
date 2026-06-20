@@ -10,9 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@vicons/ionicons5": "^0.13.0",
+    "@element-plus/icons-vue": "catalog:",
     "axios": "^1.13.2",
-    "naive-ui": "catalog:",
+    "element-plus": "catalog:",
     "pinia": "catalog:",
     "vue": "catalog:",
     "vue-router": "catalog:"

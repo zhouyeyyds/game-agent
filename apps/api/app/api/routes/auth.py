@@ -16,6 +16,30 @@ def to_user_response(user: User) -> UserResponse:
     return UserResponse(id=user.id, email=user.email, displayName=user.display_name)
 
 
+def set_session_cookie(response: Response, user_id: str) -> None:
+    settings = get_settings()
+    response.set_cookie(
+        key=settings.jwt_cookie_name,
+        value=create_access_token(user_id),
+        httponly=True,
+        samesite="lax",
+        secure=settings.app_env == "production",
+        max_age=settings.jwt_expire_minutes * 60,
+        path="/",
+    )
+
+
+def clear_session_cookie(response: Response) -> None:
+    settings = get_settings()
+    response.delete_cookie(
+        key=settings.jwt_cookie_name,
+        httponly=True,
+        samesite="lax",
+        secure=settings.app_env == "production",
+        path="/",
+    )
+
+
 @router.post("/register", response_model=UserResponse)
 def register(payload: RegisterRequest, response: Response, db: Session = Depends(get_db)) -> UserResponse:
     existing = db.scalar(select(User).where(User.email == payload.email))
@@ -31,15 +55,7 @@ def register(payload: RegisterRequest, response: Response, db: Session = Depends
     db.commit()
     db.refresh(user)
 
-    settings = get_settings()
-    response.set_cookie(
-        settings.jwt_cookie_name,
-        create_access_token(user.id),
-        httponly=True,
-        samesite="lax",
-        secure=False,
-        max_age=settings.jwt_expire_minutes * 60,
-    )
+    set_session_cookie(response, user.id)
     return to_user_response(user)
 
 
@@ -49,21 +65,13 @@ def login(payload: LoginRequest, response: Response, db: Session = Depends(get_d
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
 
-    settings = get_settings()
-    response.set_cookie(
-        settings.jwt_cookie_name,
-        create_access_token(user.id),
-        httponly=True,
-        samesite="lax",
-        secure=False,
-        max_age=settings.jwt_expire_minutes * 60,
-    )
+    set_session_cookie(response, user.id)
     return to_user_response(user)
 
 
 @router.post("/logout")
 def logout(response: Response) -> dict[str, bool]:
-    response.delete_cookie(get_settings().jwt_cookie_name)
+    clear_session_cookie(response)
     return {"ok": True}
 
 

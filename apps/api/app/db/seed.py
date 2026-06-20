@@ -1,28 +1,13 @@
-import json
 from datetime import UTC, datetime
-from io import BytesIO
 
 from sqlalchemy import select
 
+from app.core.constants import GameStatus, PENDING_STORAGE_VALUE
 from app.core.database import Base, SessionLocal, engine
 from app.core.security import hash_password
-from app.core.storage import ensure_bucket, get_minio_client, public_object_url
-from app.core.config import get_settings
+from app.core.storage import ensure_bucket, public_object_url, upload_text_object
 from app.models import Game, GameVersion, User
-
-
-def upload_text(object_name: str, content: str, content_type: str) -> str:
-    settings = get_settings()
-    client = get_minio_client()
-    data = content.encode("utf-8")
-    client.put_object(
-        settings.minio_bucket,
-        object_name,
-        BytesIO(data),
-        length=len(data),
-        content_type=content_type,
-    )
-    return public_object_url(object_name)
+from app.schemas.manifest import GameManifest, ManifestAsset, ManifestPermissions
 
 
 def build_demo_game(game_id: str, version_id: str, title: str, body: str, accent: str) -> tuple[str, str, str]:
@@ -64,24 +49,23 @@ p {{ max-width: 680px; color: #cbd5e1; line-height: 1.8; }}
 .eyebrow {{ color: {accent}; text-transform: uppercase; letter-spacing: .3em; font-size: 12px; }}
 button {{ margin-top: 24px; border: 0; border-radius: 999px; padding: 14px 24px; background: {accent}; color: #080a12; font-weight: 700; cursor: pointer; }}
 """
-    manifest = {
-        "schemaVersion": "game-manifest-v1",
-        "gameId": game_id,
-        "versionId": version_id,
-        "title": title,
-        "entry": "index.html",
-        "entryUrl": entry_url,
-        "assets": [
-            {"name": "game.js", "url": js_url, "contentType": "application/javascript"},
-            {"name": "styles.css", "url": css_url, "contentType": "text/css"},
+    manifest = GameManifest(
+        gameId=game_id,
+        versionId=version_id,
+        title=title,
+        entry="index.html",
+        entryUrl=entry_url,
+        assets=[
+            ManifestAsset(name="game.js", url=js_url, contentType="application/javascript"),
+            ManifestAsset(name="styles.css", url=css_url, contentType="text/css"),
         ],
-        "permissions": {"network": False, "storage": False},
-    }
+        permissions=ManifestPermissions(network=False, storage=False),
+    )
 
-    upload_text(f"{prefix}/index.html", html, "text/html")
-    upload_text(f"{prefix}/game.js", js, "application/javascript")
-    upload_text(f"{prefix}/styles.css", css, "text/css")
-    manifest_url = upload_text(f"{prefix}/manifest.json", json.dumps(manifest, ensure_ascii=False), "application/json")
+    upload_text_object(f"{prefix}/index.html", html, "text/html")
+    upload_text_object(f"{prefix}/game.js", js, "application/javascript")
+    upload_text_object(f"{prefix}/styles.css", css, "text/css")
+    manifest_url = upload_text_object(f"{prefix}/manifest.json", manifest.model_dump_json(), "application/json")
     return prefix, manifest_url, entry_url
 
 
@@ -105,7 +89,7 @@ def seed() -> None:
             ("Forest Rune Quest", "探索魔法森林，选择路线并解开古老符文。", ["fantasy", "choice"], "#a7f3d0"),
         ]
 
-        for index, (title, description, tags, accent) in enumerate(demos, start=1):
+        for title, description, tags, accent in demos:
             existing = db.scalar(select(Game).where(Game.title == title))
             if existing:
                 continue
@@ -115,7 +99,7 @@ def seed() -> None:
                 title=title,
                 description=description,
                 cover_url=None,
-                status="published",
+                status=str(GameStatus.PUBLISHED),
                 tags=tags,
                 published_at=datetime.now(UTC),
             )
@@ -125,9 +109,9 @@ def seed() -> None:
             version = GameVersion(
                 game_id=game.id,
                 version_number=1,
-                manifest_url="pending",
-                bundle_url="pending",
-                storage_prefix="pending",
+                manifest_url=PENDING_STORAGE_VALUE,
+                bundle_url=PENDING_STORAGE_VALUE,
+                storage_prefix=PENDING_STORAGE_VALUE,
             )
             db.add(version)
             db.flush()

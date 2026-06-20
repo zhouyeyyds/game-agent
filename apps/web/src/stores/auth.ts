@@ -44,9 +44,14 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout() {
-    await authApi.logout()
-    user.value = null
-    hasCheckedSession.value = true
+    loading.value = true
+    try {
+      await authApi.logout()
+      user.value = null
+      hasCheckedSession.value = true
+    } finally {
+      loading.value = false
+    }
   }
 
   return {
