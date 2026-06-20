@@ -5,10 +5,17 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
-from app.core.constants import AgentLogLevel, GameStatus, PENDING_STORAGE_VALUE, TaskStatus, TaskStep
+from app.core.constants import (
+    PENDING_STORAGE_VALUE,
+    AgentLogLevel,
+    GameStatus,
+    TaskStatus,
+    TaskStep,
+)
 from app.core.database import get_db
 from app.models import AgentLog, Asset, Game, GameVersion, GenerationTask, User
 from app.schemas.game_spec import GameSpec
+from app.schemas.generated_bundle import GeneratedGameBundleMetadata
 from app.schemas.task import AgentLogResponse, CreateTaskRequest, GenerationTaskResponse, TaskResult
 from app.services.generation_pipeline import run_generation_pipeline
 
@@ -32,6 +39,14 @@ def get_owned_task(task_id: str, user: User, db: Session) -> GenerationTask:
     if not task or task.user_id != user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
     return task
+
+
+def validate_generation_snapshot(snapshot: dict) -> None:
+    schema_version = snapshot.get("schemaVersion")
+    if schema_version == "generated-game-bundle-v1":
+        GeneratedGameBundleMetadata.model_validate(snapshot)
+        return
+    GameSpec.model_validate(snapshot)
 
 
 @router.post("", response_model=GenerationTaskResponse)
@@ -123,7 +138,7 @@ def publish_task(
     if PENDING_STORAGE_VALUE in {version.manifest_url, version.bundle_url, version.storage_prefix}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Generated game artifacts are incomplete")
     if version.game_spec_json:
-        GameSpec.model_validate(version.game_spec_json)
+        validate_generation_snapshot(version.game_spec_json)
 
     if game.status != GameStatus.PUBLISHED:
         game.status = str(GameStatus.PUBLISHED)

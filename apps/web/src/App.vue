@@ -1,8 +1,6 @@
 <template>
   <el-container class="app-shell" :class="{ 'app-shell--auth': hideHeader }">
-    <el-header v-if="!hideHeader" class="app-shell__header">
-      <AppHeader />
-    </el-header>
+    <AppHeader v-if="!hideHeader" />
     <el-main class="app-shell__main" :class="{ 'app-shell__main--auth': hideHeader }">
       <RouterView />
     </el-main>

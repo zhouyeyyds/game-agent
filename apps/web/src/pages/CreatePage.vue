@@ -1,71 +1,86 @@
 <template>
-  <main class="mx-auto max-w-[1800px] px-6 py-7 lg:px-12">
+  <main class="workbench-page">
     <template v-if="!currentTask">
-      <section class="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <section class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 class="m-0 text-4xl font-black tracking-tight text-slate-950">AI 游戏创作</h1>
-          <p class="mt-3 text-slate-600">用自然语言描述你的游戏想法，上传参考素材，Agent 将为你生成可玩的互动游戏。</p>
+          <h1 class="m-0 text-2xl font-semibold text-slate-950">创作中心</h1>
+          <p class="m-0 mt-1 text-sm text-slate-500">描述创意、上传参考素材，然后交给智能体生成可运行的 HTML5 游戏。</p>
         </div>
         <el-button plain :icon="Guide">创作指南</el-button>
       </section>
 
-      <div class="grid gap-6 xl:grid-cols-[1fr_410px]">
-        <section class="agent-card p-5 md:p-6">
-          <div class="mb-7">
-            <h2 class="m-0 flex items-center gap-3 text-xl font-black text-slate-950"><span class="step-dot">1</span>说出你的游戏想法</h2>
+      <div class="grid gap-4 xl:grid-cols-[1fr_360px]">
+        <section class="space-y-4">
+          <section class="app-card p-5">
+            <div class="mb-4 flex items-center gap-3">
+              <span class="step-dot">1</span>
+              <div>
+                <h2 class="m-0 text-lg font-semibold text-slate-950">说出你的游戏想法</h2>
+                <p class="m-0 mt-1 text-sm text-slate-500">包含玩法、世界观、角色、胜利条件和希望参考的视觉风格。</p>
+              </div>
+            </div>
             <el-input
               v-model="idea"
-              class="mt-5 prompt-input"
+              class="prompt-input"
               type="textarea"
-              :autosize="{ minRows: 10 }"
+              :autosize="{ minRows: 9 }"
               maxlength="3000"
               show-word-limit
-              placeholder="尽可能详细地描述你的游戏创意、背景故事、玩法机制、角色设定、胜利条件，以及可参考的素材。"
+              placeholder="例如：做一个赛博都市跑酷游戏，玩家需要躲避巡逻无人机、收集能量芯片，并在 3 分钟内抵达屋顶撤离点。"
             />
             <div class="mt-4 flex flex-wrap gap-3">
               <el-button size="small" :icon="Plus">插入参考</el-button>
-              <el-button size="small" :icon="MagicStick" @click="idea = quickIdeas[0] ?? ''">AI 优化描述</el-button>
+              <el-button size="small" :icon="MagicStick" @click="idea = quickIdeas[0] ?? ''">填入灵感</el-button>
             </div>
-          </div>
+          </section>
 
-          <div class="mb-7">
+          <section class="app-card p-5">
             <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h2 class="m-0 flex items-center gap-3 text-xl font-black text-slate-950"><span class="step-dot">2</span>上传参考素材</h2>
+              <div class="flex items-center gap-3">
+                <span class="step-dot">2</span>
+                <div>
+                  <h2 class="m-0 text-lg font-semibold text-slate-950">上传参考素材</h2>
+                  <p class="m-0 mt-1 text-sm text-slate-500">支持图片、文本和 JSON 设定文件。</p>
+                </div>
+              </div>
               <span class="text-sm text-slate-400">已上传 {{ uploadedAssets.length }}/20</span>
             </div>
-            <div class="grid gap-4 lg:grid-cols-[1fr_2fr]">
+            <div class="grid gap-4 lg:grid-cols-[320px_1fr]">
               <el-upload drag multiple :limit="4" :http-request="handleUpload">
                 <div class="py-8 text-center">
-                  <el-icon class="text-4xl text-indigo-500"><Plus /></el-icon>
-                  <p class="mt-3 font-bold text-slate-600">点击上传或拖拽到此处</p>
-                  <p class="text-xs text-slate-400">支持 JPG / PNG / GIF / TXT / JSON，单个文件不超过 10MB</p>
+                  <el-icon class="text-4xl text-blue-500"><Plus /></el-icon>
+                  <p class="mt-3 font-semibold text-slate-600">点击上传或拖拽到此处</p>
+                  <p class="text-xs text-slate-400">JPG / PNG / GIF / TXT / JSON，单个文件不超过 10MB</p>
                 </div>
               </el-upload>
               <div class="grid gap-3 md:grid-cols-3">
-                <div v-for="asset in uploadedAssets" :key="asset.id" class="overflow-hidden rounded-2xl border border-slate-200 bg-white p-3">
-                  <div class="h-24 rounded-xl bg-slate-100" />
-                  <p class="mt-2 truncate text-sm font-bold text-slate-700">{{ asset.filename }}</p>
+                <div v-for="asset in uploadedAssets" :key="asset.id" class="overflow-hidden rounded-lg border border-slate-200 bg-white p-3">
+                  <div class="h-24 rounded bg-slate-100" />
+                  <p class="mt-2 truncate text-sm font-semibold text-slate-700">{{ asset.filename }}</p>
                 </div>
-                <div v-for="index in Math.max(0, 3 - uploadedAssets.length)" :key="index" class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                <div v-for="index in Math.max(0, 3 - uploadedAssets.length)" :key="index" class="overflow-hidden rounded-lg border border-slate-200 bg-white">
                   <img :src="referenceImages.createFormImage" alt="" class="h-32 w-full object-cover object-left-top opacity-80" />
                 </div>
               </div>
             </div>
-          </div>
+          </section>
 
-          <div>
-            <h2 class="m-0 flex items-center gap-3 text-xl font-black text-slate-950"><span class="step-dot">3</span>快速灵感</h2>
-            <div class="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-5">
-              <button v-for="tip in quickIdeas" :key="tip" class="rounded-2xl border border-slate-200 bg-white p-4 text-left text-sm font-bold text-slate-700" type="button" @click="idea = tip">
+          <section class="app-card p-5">
+            <div class="mb-4 flex items-center gap-3">
+              <span class="step-dot">3</span>
+              <h2 class="m-0 text-lg font-semibold text-slate-950">快速灵感</h2>
+            </div>
+            <div class="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
+              <button v-for="tip in quickIdeas" :key="tip" class="rounded-lg border border-slate-200 bg-white p-4 text-left text-sm font-semibold text-slate-700 transition hover:border-blue-300 hover:text-blue-600" type="button" @click="idea = tip">
                 {{ tip }}
               </button>
             </div>
-          </div>
+          </section>
         </section>
 
-        <aside class="agent-card h-fit p-5">
+        <aside class="app-card h-fit p-5">
           <div class="mb-5 flex items-center justify-between">
-            <h2 class="m-0 text-xl font-black text-slate-950">生成配置</h2>
+            <h2 class="m-0 text-lg font-semibold text-slate-950">生成配置</h2>
             <el-button text size="small" @click="resetAll">重置</el-button>
           </div>
           <el-form label-position="top">
@@ -101,50 +116,38 @@
           <el-button class="agent-gradient-button w-full" size="large" type="primary" :loading="loading" :disabled="!canGenerate" @click="generate">
             开始生成
           </el-button>
-          <p class="mt-4 text-xs text-slate-400">你的素材仅用于本次生成，Agent 不会将其用于模型训练或公开展示。</p>
+          <p class="mt-4 text-xs leading-5 text-slate-400">素材仅用于本次生成，不会用于公开展示或模型训练。</p>
         </aside>
       </div>
     </template>
 
     <template v-else-if="currentTask.status === 'pending' || currentTask.status === 'running'">
-      <div class="grid gap-6 xl:grid-cols-[1fr_390px]">
-        <section class="space-y-5">
-          <section class="agent-card grid gap-6 p-6 lg:grid-cols-[1fr_0.9fr]">
-            <div>
-              <p class="m-0 text-sm text-slate-500">Create / 生成任务</p>
-              <h1 class="mt-8 text-3xl font-black text-slate-950">我的游戏创意</h1>
-              <h2 class="mt-4 text-2xl font-black text-slate-900">{{ currentTask.ideaText.slice(0, 24) || 'AI 游戏生成任务' }}</h2>
-              <p class="mt-4 line-clamp-3 text-sm leading-7 text-slate-600">{{ currentTask.ideaText }}</p>
-              <div class="mt-5 flex flex-wrap gap-2">
-                <el-tag v-for="tag in ['开放世界', '生存建造', '太空探索']" :key="tag" round>{{ tag }}</el-tag>
-              </div>
-            </div>
-            <div>
-              <div class="mb-3 flex items-center justify-between">
-                <h3 class="m-0 text-base font-black text-slate-900">上传的素材（{{ currentTask.assetIds.length }}）</h3>
-                <el-button text size="small">查看全部</el-button>
-              </div>
-              <div class="grid grid-cols-3 gap-3">
-                <img v-for="index in 3" :key="index" :src="referenceImages.createTaskImage" alt="" class="h-28 rounded-2xl object-cover object-left-top" />
-              </div>
+      <div class="grid gap-4 xl:grid-cols-[1fr_360px]">
+        <section class="space-y-4">
+          <section class="app-card p-5">
+            <p class="m-0 text-sm text-slate-500">Create / 生成任务</p>
+            <h1 class="mt-3 text-2xl font-semibold text-slate-950">{{ currentTask.ideaText.slice(0, 32) || 'AI 游戏生成任务' }}</h1>
+            <p class="mt-3 line-clamp-3 text-sm leading-7 text-slate-600">{{ currentTask.ideaText }}</p>
+            <div class="mt-4 flex flex-wrap gap-2">
+              <el-tag v-for="tag in ['开放世界', '生存建造', '太空探索']" :key="tag" round>{{ tag }}</el-tag>
             </div>
           </section>
 
-          <section class="agent-card p-6">
+          <section class="app-card p-5">
             <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-              <h2 class="m-0 text-xl font-black text-slate-950">AI 多智能体工作流</h2>
+              <h2 class="m-0 text-lg font-semibold text-slate-950">AI 多智能体工作流</h2>
               <div class="flex gap-2">
-                <el-tag type="info" round>等待中 4</el-tag>
-                <el-tag type="primary" round>运行中 1</el-tag>
-                <el-tag type="success" round>已完成 3</el-tag>
+                <el-tag type="info" round>等待中</el-tag>
+                <el-tag type="primary" round>运行中</el-tag>
+                <el-tag type="success" round>已完成</el-tag>
               </div>
             </div>
             <GenerationTimeline :status="timelineStatus" :current-step="currentTask.currentStep" />
           </section>
 
-          <section class="agent-card p-6">
+          <section class="app-card p-5">
             <div class="mb-5 flex items-center justify-between">
-              <h2 class="m-0 text-xl font-black text-slate-950">智能体执行日志</h2>
+              <h2 class="m-0 text-lg font-semibold text-slate-950">智能体执行日志</h2>
               <el-switch model-value active-text="实时日志" />
             </div>
             <AgentLogPanel :logs="logs" />
@@ -156,14 +159,14 @@
     </template>
 
     <template v-else-if="currentTask.status === 'succeeded' && previewManifest">
-      <div class="grid gap-6 xl:grid-cols-[1fr_560px]">
-        <section class="space-y-5">
-          <section class="agent-card flex flex-wrap items-center justify-between gap-4 p-6">
+      <div class="grid gap-4 xl:grid-cols-[1fr_420px]">
+        <section class="space-y-4">
+          <section class="app-card flex flex-wrap items-center justify-between gap-4 p-5">
             <div class="flex items-center gap-4">
-              <span class="grid h-14 w-14 place-items-center rounded-full bg-emerald-500 text-white"><el-icon size="28"><Check /></el-icon></span>
+              <span class="grid h-12 w-12 place-items-center rounded-full bg-emerald-500 text-white"><el-icon size="24"><Check /></el-icon></span>
               <div>
-                <h1 class="m-0 text-2xl font-black text-slate-950">恭喜！你的游戏已生成完成</h1>
-                <p class="mt-1 text-sm text-slate-500">预览游戏效果，完善信息后即可发布。</p>
+                <h1 class="m-0 text-xl font-semibold text-slate-950">游戏已生成完成</h1>
+                <p class="mt-1 text-sm text-slate-500">预览效果并完善发布信息后即可上线。</p>
               </div>
             </div>
             <div class="flex flex-wrap gap-3">
@@ -173,24 +176,24 @@
             </div>
           </section>
 
-          <section class="agent-card p-6">
-            <h2 class="m-0 mb-4 text-xl font-black text-slate-950">游戏预览</h2>
+          <section class="app-card p-5">
+            <h2 class="m-0 mb-4 text-lg font-semibold text-slate-950">游戏预览</h2>
             <RemoteGameFrame :manifest="previewManifest" />
           </section>
 
           <PublishPanel :task="currentTask" :publishing="publishing" @publish="publish" @play="openPlay" />
         </section>
 
-        <aside class="space-y-5">
-          <section class="agent-card p-6">
-            <h2 class="m-0 text-xl font-black text-slate-950">发布信息</h2>
+        <aside class="space-y-4">
+          <section class="app-card p-5">
+            <h2 class="m-0 text-lg font-semibold text-slate-950">发布信息</h2>
             <el-form class="mt-5" label-position="top">
               <el-form-item label="游戏标题">
                 <el-input v-model="publishTitle" maxlength="60" show-word-limit />
               </el-form-item>
               <el-form-item label="封面图">
                 <div class="flex items-center gap-4">
-                  <img :src="referenceImages.createPublishImage" alt="" class="h-20 w-32 rounded-xl object-cover object-left-top" />
+                  <img :src="referenceImages.createPublishImage" alt="" class="h-20 w-32 rounded-lg object-cover object-left-top" />
                   <el-button>更换封面</el-button>
                 </div>
               </el-form-item>
@@ -212,8 +215,8 @@
             </el-form>
           </section>
 
-          <section class="agent-card p-6">
-            <h2 class="m-0 text-xl font-black text-slate-950">版本与构建信息</h2>
+          <section class="app-card p-5">
+            <h2 class="m-0 text-lg font-semibold text-slate-950">版本与构建信息</h2>
             <InfoRows :rows="buildRows" />
           </section>
         </aside>
@@ -221,7 +224,7 @@
     </template>
 
     <template v-else>
-      <section class="agent-card p-8">
+      <section class="app-card p-6">
         <el-alert type="error" title="Create workflow error" :closable="false" show-icon>
           {{ error || currentTask.errorMessage || '任务失败，请重试。' }}
         </el-alert>
@@ -261,7 +264,7 @@ const duration = ref('短')
 const artStyle = ref('realistic')
 const language = ref('zh-CN')
 const model = ref('game-v1')
-const publishTitle = ref('迷雾之城：哀歌')
+const publishTitle = ref('迷雾之城：钟声')
 const publishDescription = ref('在迷雾与诅咒交织的古城中探寻真相，你的选择将决定众人的命运。')
 const publishTags = ref(['角色扮演', '剧情向', '暗黑奇幻', '单机'])
 const publishMode = ref('now')
@@ -349,7 +352,7 @@ const InfoRows = defineComponent({
     rows: { type: Array as () => string[][], required: true },
   },
   setup(props) {
-    return () => h('div', { class: 'space-y-3' }, props.rows.map(([label, value]) => h('div', { class: 'flex gap-4 text-sm' }, [
+    return () => h('div', { class: 'mt-4 space-y-3' }, props.rows.map(([label, value]) => h('div', { class: 'flex gap-4 text-sm' }, [
       h('span', { class: 'w-24 shrink-0 text-slate-400' }, label),
       h('span', { class: 'min-w-0 flex-1 break-all font-medium text-slate-700' }, value),
     ])))
@@ -363,9 +366,9 @@ const TaskAside = defineComponent({
   },
   emits: ['reset', 'publish'],
   setup(props, { emit }) {
-    return () => h('aside', { class: 'space-y-5' }, [
-      h('section', { class: 'agent-card p-6' }, [
-        h('h2', { class: 'm-0 text-xl font-black text-slate-950' }, '任务信息'),
+    return () => h('aside', { class: 'space-y-4' }, [
+      h('section', { class: 'app-card p-5' }, [
+        h('h2', { class: 'm-0 text-lg font-semibold text-slate-950' }, '任务信息'),
         h(InfoRows, { rows: [
           ['任务状态', props.task.status],
           ['任务 ID', props.task.id],
@@ -374,12 +377,12 @@ const TaskAside = defineComponent({
           ['运行时长', '00:06:48'],
         ] }),
       ]),
-      h('section', { class: 'agent-card p-6' }, [
-        h('h2', { class: 'm-0 mb-4 text-xl font-black text-slate-950' }, '生成产物（预测）'),
-        h('div', { class: 'grid grid-cols-2 gap-3' }, generatedArtifacts.map((artifact) => h('div', { class: 'rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center text-sm font-bold text-slate-500' }, artifact))),
+      h('section', { class: 'app-card p-5' }, [
+        h('h2', { class: 'm-0 mb-4 text-lg font-semibold text-slate-950' }, '生成产物'),
+        h('div', { class: 'grid grid-cols-2 gap-3' }, generatedArtifacts.map((artifact) => h('div', { class: 'rounded-lg border border-slate-200 bg-slate-50 p-4 text-center text-sm font-semibold text-slate-500' }, artifact))),
       ]),
-      h('section', { class: 'agent-card p-6' }, [
-        h('h2', { class: 'm-0 mb-4 text-xl font-black text-slate-950' }, '资源消耗'),
+      h('section', { class: 'app-card p-5' }, [
+        h('h2', { class: 'm-0 mb-4 text-lg font-semibold text-slate-950' }, '资源消耗'),
         h(InfoRows, { rows: [
           ['总消耗', '1,240 积分'],
           ['Tokens', '3,245,678'],
@@ -388,8 +391,8 @@ const TaskAside = defineComponent({
         ] }),
       ]),
       h('div', { class: 'flex gap-3' }, [
-        h('button', { class: 'flex-1 rounded-xl border border-red-200 bg-white px-4 py-3 font-bold text-red-500', onClick: () => emit('reset') }, '终止任务'),
-        h('button', { class: 'flex-1 rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 font-bold text-slate-400', disabled: true }, '预览'),
+        h('button', { class: 'flex-1 rounded-lg border border-red-200 bg-white px-4 py-3 font-semibold text-red-500', onClick: () => emit('reset') }, '终止任务'),
+        h('button', { class: 'flex-1 rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 font-semibold text-slate-400', disabled: true }, '预览'),
       ]),
     ])
   },
@@ -405,13 +408,14 @@ onBeforeUnmount(() => createTask.stopPolling())
   height: 28px;
   place-items: center;
   border-radius: 999px;
-  background: linear-gradient(135deg, #2f63ff, #7c3aed);
+  background: #2f63ff;
   color: #fff;
   font-size: 14px;
+  font-weight: 700;
 }
 
 .prompt-input :deep(textarea) {
-  border-radius: 16px;
+  border-radius: 8px;
   font-size: 1rem;
   line-height: 1.8;
 }

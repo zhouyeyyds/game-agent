@@ -3,21 +3,21 @@
     <div class="grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-8">
       <div v-for="(item, index) in items" :key="item.key" class="text-center">
         <div
-          class="mx-auto grid h-11 w-11 place-items-center rounded-full border text-sm font-black"
+          class="mx-auto grid h-11 w-11 place-items-center rounded-full border text-sm font-semibold"
           :class="itemClasses(item)"
         >
           <el-icon v-if="item.state === 'done'"><Check /></el-icon>
           <el-icon v-else-if="item.state === 'running'" class="is-loading"><Loading /></el-icon>
           <span v-else>{{ index + 1 }}</span>
         </div>
-        <p class="mt-2 text-xs font-black" :class="item.state === 'running' ? 'text-indigo-600' : 'text-slate-700'">{{ item.title }}</p>
+        <p class="mt-2 text-xs font-semibold" :class="item.state === 'running' ? 'text-blue-600' : 'text-slate-700'">{{ item.title }}</p>
         <p class="m-0 text-xs text-slate-400">{{ item.label }}</p>
       </div>
     </div>
     <div class="flex items-center gap-4">
       <span class="text-sm text-slate-500">总体进度</span>
       <el-progress class="flex-1" :percentage="progress" :show-text="false" />
-      <span class="text-sm font-black text-slate-700">{{ progress }}%</span>
+      <span class="text-sm font-semibold text-slate-700">{{ progress }}%</span>
     </div>
   </div>
 </template>
@@ -56,7 +56,7 @@ const items = computed(() => generationSteps.map((title, index) => ({
 
 function itemClasses(item: { state: string }) {
   if (item.state === 'done') return 'border-emerald-400 bg-emerald-500 text-white'
-  if (item.state === 'running') return 'border-indigo-500 bg-indigo-600 text-white shadow-lg shadow-indigo-500/25'
+  if (item.state === 'running') return 'border-blue-500 bg-blue-600 text-white shadow-lg shadow-blue-500/20'
   return 'border-slate-200 bg-slate-100 text-slate-400'
 }
 </script>

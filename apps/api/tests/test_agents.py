@@ -2,6 +2,7 @@ import pytest
 
 from app.agents.llm import _extract_json_object
 from app.agents.nodes import derive_requirement_profile, scan_bundle_security
+from app.api.routes.generation_tasks import validate_generation_snapshot
 from app.schemas.generated_bundle import GeneratedGameBundle
 
 
@@ -49,6 +50,21 @@ def test_generated_bundle_accepts_valid_static_files() -> None:
     assert bundle.entry == "index.html"
     assert scan_bundle_security(bundle) == []
     assert bundle.metadata_json()["files"][0]["path"] == "index.html"
+
+
+def test_publish_snapshot_accepts_generated_bundle_metadata() -> None:
+    bundle = GeneratedGameBundle.model_validate(valid_bundle())
+
+    validate_generation_snapshot(bundle.metadata_json())
+
+
+def test_publish_snapshot_rejects_invalid_generated_bundle_metadata_path() -> None:
+    bundle = GeneratedGameBundle.model_validate(valid_bundle())
+    snapshot = bundle.metadata_json()
+    snapshot["files"][0]["path"] = "../index.html"
+
+    with pytest.raises(ValueError, match="parent path"):
+        validate_generation_snapshot(snapshot)
 
 
 def test_generated_bundle_requires_index_html() -> None:

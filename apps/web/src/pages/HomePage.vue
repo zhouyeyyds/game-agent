@@ -1,94 +1,113 @@
 <template>
-  <main class="mx-auto grid max-w-[1800px] gap-6 px-6 py-7 lg:grid-cols-[1fr_390px] lg:px-12">
-    <section class="min-w-0 space-y-6">
-      <section class="agent-card grid overflow-hidden p-8 lg:grid-cols-[1fr_0.9fr] lg:p-10">
-        <div class="relative z-10">
-          <div class="inline-flex items-center rounded-xl bg-white px-3 py-2 text-sm font-bold text-indigo-600 shadow-sm">
-            AI 驱动的互动游戏创作与体验社区
-          </div>
-          <h1 class="mt-6 max-w-2xl text-4xl font-black leading-tight tracking-tight text-slate-950 md:text-5xl">
-            在 AgentPlay，人人都是游戏<span class="text-indigo-600">创作者</span>，人人都是<span class="text-blue-600">玩家</span>
-          </h1>
-          <p class="mt-5 max-w-2xl text-base leading-8 text-slate-600">
-            通过 AI Agent 让想象力变成可玩世界。探索由创作者发布的互动游戏，或使用 Create 打造你的专属作品并发布给世界。
-          </p>
-          <div class="mt-7 flex flex-wrap gap-3">
-            <el-button class="agent-gradient-button" size="large" type="primary" :icon="VideoPlay" @click="scrollToGallery">开始探索</el-button>
-            <el-button size="large" :icon="MagicStick" @click="router.push('/create')">Create 游戏</el-button>
-          </div>
-        </div>
-        <div class="relative mt-8 min-h-56 overflow-hidden rounded-3xl lg:mt-0">
-          <img :src="referenceImages.homeShowcase" alt="" class="absolute inset-0 h-full w-full object-cover object-right-top" />
-        </div>
-      </section>
-
-      <div class="grid gap-3 md:grid-cols-[1fr_210px]">
-        <el-input v-model="searchText" :prefix-icon="Search" size="large" placeholder="搜索游戏名称、作者或标签，例如：科幻、悬疑、冒险..." />
-        <el-select v-model="sortMode" size="large">
-          <el-option label="排序：最新发布" value="newest" />
-          <el-option label="排序：最多游玩" value="plays" />
-        </el-select>
-      </div>
-
-      <el-tabs v-model="activeCategory" class="category-tabs">
-        <el-tab-pane v-for="category in categories" :key="category" :label="category" :name="category" />
-      </el-tabs>
-
-      <div id="gallery" v-loading="loading" element-loading-background="rgba(247, 249, 255, 0.72)" class="min-h-80">
-        <el-empty v-if="!loading && filteredGames.length === 0" description="暂无已发布游戏" class="agent-card py-20" />
-        <div v-else class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          <GameCard v-for="(game, index) in filteredGames" :key="game.id" :game="game" :index="index" @play="goPlay" />
-        </div>
-      </div>
-    </section>
-
-    <aside class="space-y-5">
-      <section class="agent-card p-5">
-        <div class="mb-4 flex items-center justify-between">
-          <h2 class="m-0 text-lg font-black text-slate-950">热门标签</h2>
-          <button class="border-0 bg-transparent text-sm font-bold text-slate-400" type="button">查看更多</button>
-        </div>
-        <div class="flex flex-wrap gap-3">
-          <el-tag v-for="[tag, count] in hotTags" :key="tag" round size="large">{{ tag }} <span class="ml-1 text-slate-400">{{ count }}</span></el-tag>
-        </div>
-      </section>
-
-      <section class="agent-card p-5">
-        <div class="mb-4 flex items-center justify-between">
-          <h2 class="m-0 text-lg font-black text-slate-950">推荐创作者</h2>
-          <button class="border-0 bg-transparent text-sm font-bold text-slate-400" type="button">查看更多</button>
-        </div>
-        <div class="space-y-4">
-          <div v-for="creator in creators" :key="creator[0]" class="flex items-center gap-3">
-            <span class="grid h-11 w-11 place-items-center rounded-full bg-gradient-to-br from-slate-900 to-indigo-500 text-sm font-bold text-white">{{ creator[0].slice(0, 1) }}</span>
-            <div class="min-w-0 flex-1">
-              <p class="m-0 truncate text-sm font-black text-slate-900">{{ creator[0] }}</p>
-              <p class="m-0 truncate text-xs text-slate-500">{{ creator[1] }}</p>
-              <p class="m-0 text-xs text-orange-500">{{ creator[2] }}</p>
+  <main class="workbench-page">
+    <div class="grid gap-4 xl:grid-cols-[1fr_360px]">
+      <section class="space-y-4">
+        <section class="app-card overflow-hidden">
+          <div class="grid gap-5 p-5 lg:grid-cols-[1fr_320px]">
+            <div>
+              <div class="mb-4 flex flex-wrap items-center gap-2">
+                <el-tag type="primary" effect="plain">工作台</el-tag>
+                <span class="text-sm text-slate-500">AI 游戏创作与体验平台</span>
+              </div>
+              <h1 class="m-0 text-2xl font-semibold text-slate-900 lg:text-3xl">发现、创建并运行 AI 生成游戏</h1>
+              <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-500">
+                浏览社区发布的互动游戏，按题材快速筛选，也可以进入创作中心用自然语言生成自己的游戏作品。
+              </p>
+              <div class="mt-5 flex flex-wrap gap-3">
+                <el-button type="primary" :icon="VideoPlay" @click="scrollToGallery">查看游戏</el-button>
+                <el-button :icon="MagicStick" @click="router.push('/create')">创建游戏</el-button>
+              </div>
             </div>
-            <el-button size="small" plain>关注</el-button>
+            <div class="hidden overflow-hidden rounded-lg border border-slate-200 bg-slate-50 lg:block">
+              <img :src="referenceImages.homeShowcase" alt="" class="h-full min-h-44 w-full object-cover object-right-top" />
+            </div>
           </div>
-        </div>
+        </section>
+
+        <section class="grid gap-4 md:grid-cols-4">
+          <article v-for="[value, label] in platformStats" :key="label" class="app-card p-4">
+            <p class="m-0 text-2xl font-semibold text-blue-600">{{ value }}</p>
+            <p class="m-0 mt-1 text-sm text-slate-500">{{ label }}</p>
+          </article>
+        </section>
+
+        <section id="gallery" class="app-card p-4">
+          <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 class="m-0 text-lg font-semibold text-slate-900">游戏广场</h2>
+              <p class="m-0 mt-1 text-sm text-slate-500">按题材、热度和发布时间浏览已发布作品</p>
+            </div>
+            <el-button text type="primary" :icon="Plus" @click="router.push('/create')">发布新作品</el-button>
+          </div>
+
+          <div class="grid gap-3 lg:grid-cols-[1fr_200px]">
+            <el-input v-model="searchText" :prefix-icon="Search" placeholder="搜索游戏名称、作者或标签" clearable />
+            <el-select v-model="sortMode">
+              <el-option label="最新发布" value="newest" />
+              <el-option label="最多游玩" value="plays" />
+            </el-select>
+          </div>
+
+          <el-tabs v-model="activeCategory" class="mt-2">
+            <el-tab-pane v-for="category in categories" :key="category" :label="category" :name="category" />
+          </el-tabs>
+
+          <div v-loading="loading" element-loading-background="rgba(248, 250, 252, 0.72)" class="min-h-80">
+            <el-empty v-if="!loading && filteredGames.length === 0" description="暂无已发布游戏" class="py-16" />
+            <div v-else class="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+              <GameCard v-for="(game, index) in filteredGames" :key="game.id" :game="game" :index="index" @play="goPlay" />
+            </div>
+          </div>
+        </section>
       </section>
 
-      <section class="agent-card p-5">
-        <div class="mb-4 flex items-center justify-between">
-          <h2 class="m-0 text-lg font-black text-slate-950">平台数据</h2>
-          <span class="text-xs font-bold text-emerald-500">实时更新</span>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div v-for="[value, label] in platformStats" :key="label" class="rounded-2xl bg-slate-50 p-4">
-            <p class="m-0 text-xl font-black text-indigo-600">{{ value }}</p>
-            <p class="m-0 mt-1 text-xs text-slate-500">{{ label }}</p>
+      <aside class="space-y-4">
+        <section class="app-card p-4">
+          <div class="mb-4 flex items-center justify-between">
+            <h2 class="m-0 text-lg font-semibold text-slate-900">热门标签</h2>
+            <el-button text size="small">更多</el-button>
           </div>
-        </div>
-      </section>
-    </aside>
+          <div class="flex flex-wrap gap-2">
+            <el-tag v-for="[tag, count] in hotTags" :key="tag" round>
+              {{ tag }} <span class="ml-1 text-slate-400">{{ count }}</span>
+            </el-tag>
+          </div>
+        </section>
+
+        <section class="app-card p-4">
+          <div class="mb-4 flex items-center justify-between">
+            <h2 class="m-0 text-lg font-semibold text-slate-900">推荐创作者</h2>
+            <el-button text size="small">查看</el-button>
+          </div>
+          <div class="space-y-4">
+            <div v-for="creator in creators" :key="creator[0]" class="flex items-center gap-3">
+              <span class="grid h-10 w-10 place-items-center rounded-full bg-blue-50 text-sm font-semibold text-blue-600">
+                {{ creator[0].slice(0, 1) }}
+              </span>
+              <div class="min-w-0 flex-1">
+                <p class="m-0 truncate text-sm font-semibold text-slate-800">{{ creator[0] }}</p>
+                <p class="m-0 truncate text-xs text-slate-500">{{ creator[1] }}</p>
+                <p class="m-0 text-xs text-orange-500">{{ creator[2] }}</p>
+              </div>
+              <el-button size="small" plain>关注</el-button>
+            </div>
+          </div>
+        </section>
+
+        <section class="app-card p-4">
+          <h2 class="m-0 text-lg font-semibold text-slate-900">快捷入口</h2>
+          <div class="mt-4 grid gap-2">
+            <el-button :icon="MagicStick" @click="router.push('/create')">进入创作中心</el-button>
+            <el-button :icon="Search" @click="scrollToGallery">浏览游戏广场</el-button>
+          </div>
+        </section>
+      </aside>
+    </div>
   </main>
 </template>
 
 <script setup lang="ts">
-import { MagicStick, Search, VideoPlay } from '@element-plus/icons-vue'
+import { MagicStick, Plus, Search, VideoPlay } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'

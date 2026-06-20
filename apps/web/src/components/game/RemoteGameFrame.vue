@@ -1,11 +1,11 @@
 <template>
   <div class="space-y-4">
-    <el-alert v-if="error" type="error" title="Remote game failed to load" :closable="false" show-icon>
+    <el-alert v-if="error" type="error" title="远程游戏加载失败" :closable="false" show-icon>
       {{ error }}
     </el-alert>
 
-    <div v-else class="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 shadow-2xl shadow-slate-300/40">
-      <div class="absolute inset-x-0 top-0 z-10 flex items-center justify-between bg-black/35 px-5 py-3 text-xs font-black uppercase tracking-[0.2em] text-white/80 backdrop-blur">
+    <div v-else class="relative overflow-hidden rounded-lg border border-slate-200 bg-slate-950 shadow-sm">
+      <div class="absolute inset-x-0 top-0 z-10 flex items-center justify-between bg-black/35 px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-white/80 backdrop-blur">
         <span>AgentPlay Runtime</span>
         <span>{{ statusText }}</span>
       </div>
@@ -23,14 +23,14 @@
           <div class="mx-auto mb-6 grid h-20 w-20 place-items-center rounded-full bg-white/10 backdrop-blur">
             <el-icon class="is-loading" size="38"><Loading /></el-icon>
           </div>
-          <h3 class="m-0 text-3xl font-black">正在加载游戏...</h3>
-          <p class="mt-4 text-sm text-white/70">首次加载可能需要较长时间，请稍候。</p>
+          <h3 class="m-0 text-3xl font-semibold">正在加载游戏...</h3>
+          <p class="mt-4 text-sm text-white/70">首次加载可能需要一些时间，请稍候。</p>
         </div>
       </div>
     </div>
 
-    <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-      <span>Runtime status: <strong>{{ statusText }}</strong></span>
+    <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-600">
+      <span>运行状态：<strong>{{ statusText }}</strong></span>
       <div class="flex gap-2">
         <el-button size="small" :icon="Refresh" @click="restart">重新开始</el-button>
         <el-button size="small" :icon="FullScreen">全屏</el-button>
@@ -55,11 +55,11 @@ const frameRef = ref<HTMLIFrameElement | null>(null)
 const gameStatus = ref<'loading' | 'ready' | 'completed' | 'error'>('loading')
 
 const statusText = computed(() => {
-  if (props.error) return 'Load failed'
-  if (gameStatus.value === 'ready') return 'Ready'
-  if (gameStatus.value === 'completed') return 'Completed'
-  if (gameStatus.value === 'error') return 'Runtime error'
-  return 'Loading'
+  if (props.error) return '加载失败'
+  if (gameStatus.value === 'ready') return '就绪'
+  if (gameStatus.value === 'completed') return '已完成'
+  if (gameStatus.value === 'error') return '运行错误'
+  return '加载中'
 })
 
 watch(() => props.manifest?.entryUrl, () => {

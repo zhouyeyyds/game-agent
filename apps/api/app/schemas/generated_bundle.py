@@ -79,6 +79,39 @@ class GeneratedGameBundle(BaseModel):
         }
 
 
+class GeneratedBundleMetadataFile(BaseModel):
+    path: str = Field(min_length=1, max_length=160)
+    contentType: str = Field(min_length=1, max_length=120)
+    sizeBytes: int = Field(ge=0, le=MAX_FILE_BYTES)
+
+    @model_validator(mode="after")
+    def validate_file(self) -> "GeneratedBundleMetadataFile":
+        validate_bundle_path(self.path, self.contentType)
+        return self
+
+
+class GeneratedGameBundleMetadata(BaseModel):
+    schemaVersion: Literal["generated-game-bundle-v1"] = "generated-game-bundle-v1"
+    title: str = Field(min_length=1, max_length=200)
+    description: str = Field(min_length=1, max_length=1200)
+    tags: list[str] = Field(default_factory=list, max_length=12)
+    entry: Literal["index.html"] = "index.html"
+    files: list[GeneratedBundleMetadataFile] = Field(min_length=1, max_length=12)
+    permissions: BundlePermissions = Field(default_factory=BundlePermissions)
+
+    @model_validator(mode="after")
+    def validate_metadata(self) -> "GeneratedGameBundleMetadata":
+        paths = [file.path for file in self.files]
+        if len(paths) != len(set(paths)):
+            raise ValueError("bundle file paths must be unique")
+        if "index.html" not in paths:
+            raise ValueError("bundle must include index.html")
+        total_bytes = sum(file.sizeBytes for file in self.files)
+        if total_bytes > MAX_TOTAL_BYTES:
+            raise ValueError("bundle is too large")
+        return self
+
+
 def validate_bundle_path(path: str, content_type: str) -> None:
     normalized = path.replace("\\", "/")
     parsed = PurePosixPath(normalized)

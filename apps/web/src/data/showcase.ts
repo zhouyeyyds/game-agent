@@ -28,10 +28,11 @@ export const hotTags: Array<[string, string]> = [
   ['冒险', '543'],
   ['治愈', '478'],
   ['奇幻', '432'],
+  ['末日', '301'],
 ]
 
 export const creators: Array<[string, string, string]> = [
-  ['星染江南', '擅长悬疑与剧情向故事', '12.4k 粉丝'],
+  ['墨柒江南', '擅长悬疑与剧情向故事', '12.4k 粉丝'],
   ['小圆脸软糖', '治愈系模拟游戏创作者', '8.7k 粉丝'],
   ['CodePhantom', '科幻与未来题材爱好者', '15.2k 粉丝'],
   ['风与海', '浪漫与情感叙事记录者', '6.3k 粉丝'],
@@ -54,7 +55,7 @@ export const quickIdeas = [
 
 export const generationSteps = [
   '需求解析',
-  '世界观/玩法设计',
+  '世界观与玩法设计',
   '素材理解',
   '角色与场景生成',
   '代码生成',

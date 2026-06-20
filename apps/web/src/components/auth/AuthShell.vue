@@ -1,69 +1,60 @@
 <template>
-  <main class="auth-page">
-    <section class="auth-hero">
-      <div class="auth-brand">
-        <span class="auth-logo">
-          <span class="auth-logo-triangle" />
-        </span>
-        <span>AgentPlay</span>
+  <section class="auth-hero">
+    <div class="auth-brand">
+      <span class="auth-logo">
+        <span class="auth-logo-triangle" />
+      </span>
+      <span>AgentPlay</span>
+    </div>
+
+    <div class="auth-hero-content">
+      <div class="auth-pill">
+        <el-icon><MagicStick /></el-icon>
+        <span>AI 驱动的互动游戏创作与体验社区</span>
       </div>
 
-      <div class="auth-hero-content">
-        <div class="auth-pill">
-          <el-icon><MagicStick /></el-icon>
-          <span>AI 驱动的互动游戏创作与体验社区</span>
-        </div>
+      <h2 class="auth-title">
+        在 AgentPlay，<br />
+        人人都是游戏<span>创作者</span>，<br />
+        人人都是<span>玩家</span>
+      </h2>
 
-        <h1 class="auth-title">
-          在 AgentPlay，<br />
-          人人都是游戏<span>创作者</span>，<br />
-          人人都是<span>玩家</span>
-        </h1>
+      <p class="auth-desc">
+        通过 AI Agent 让想象力变成互动世界，<br />
+        开启由创作者发布的互动游戏，<br />
+        或使用 Create 打造你的专属作品并发布到世界。
+      </p>
 
-        <p class="auth-desc">
-          通过 AI Agent 让想象力变成互动世界，<br />
-          开启自由创作者发布的互动游戏，<br />
-          或使用 Create 打造你的专属作品并发布到世界。
-        </p>
-
-        <div class="auth-features">
-          <div v-for="item in featureItems" :key="item.title" class="auth-feature">
-            <span class="auth-feature-icon">
-              <el-icon><component :is="item.icon" /></el-icon>
-            </span>
-            <div>
-              <h3>{{ item.title }}</h3>
-              <p>{{ item.text }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="auth-illustration" aria-hidden="true" />
-    </section>
-
-    <section class="auth-form-zone">
-      <div class="auth-form-stack">
-        <slot />
-        <footer class="auth-footer">
+      <div class="auth-features">
+        <div v-for="item in featureItems" :key="item.title" class="auth-feature">
+          <span class="auth-feature-icon">
+            <el-icon><component :is="item.icon" /></el-icon>
+          </span>
           <div>
-            <span>帮助中心</span>
-            <i />
-            <span>用户协议</span>
-            <i />
-            <span>隐私政策</span>
+            <h3>{{ item.title }}</h3>
+            <p>{{ item.text }}</p>
           </div>
-          <p>© 2024 AgentPlay. 保留所有权利。</p>
-        </footer>
+        </div>
       </div>
-    </section>
-  </main>
+    </div>
+
+    <div class="auth-illustration" aria-hidden="true">
+      <div class="orbit orbit-one" />
+      <div class="orbit orbit-two" />
+      <div class="bot">
+        <span class="bot-eye left" />
+        <span class="bot-eye right" />
+      </div>
+      <div class="float-card card-game">GAME</div>
+      <div class="float-card card-list" />
+      <div class="float-card card-image" />
+      <div class="float-card card-like" />
+    </div>
+  </section>
 </template>
 
 <script setup lang="ts">
 import { Connection, MagicStick, Promotion } from '@element-plus/icons-vue'
-
-import { referenceImages } from '@/data/showcase'
 
 const featureItems = [
   {
@@ -82,42 +73,33 @@ const featureItems = [
     icon: Promotion,
   },
 ]
-
-const showcaseImage = `url("${referenceImages.authShowcase}")`
 </script>
 
 <style scoped>
-.auth-page {
-  display: flex;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-  background: #fff;
-}
-
 .auth-hero {
   position: relative;
-  flex: 0 0 clamp(700px, 41.65vw, 780px);
+  flex: 0 0 min(41.7vw, 720px);
+  min-width: 620px;
   height: calc(100vh - 28px);
   margin: 14px 0 14px 14px;
   overflow: hidden;
   border-radius: 16px 0 0 16px;
   background:
-    radial-gradient(circle at 84% 82%, rgba(139, 92, 246, 0.24), transparent 33%),
-    radial-gradient(circle at 72% 52%, rgba(96, 165, 250, 0.16), transparent 36%),
-    linear-gradient(142deg, #f8fbff 0%, #eef6ff 48%, #ddd8ff 100%);
+    radial-gradient(circle at 82% 84%, rgba(131, 97, 255, 0.3), transparent 36%),
+    radial-gradient(circle at 70% 54%, rgba(96, 165, 250, 0.18), transparent 38%),
+    linear-gradient(145deg, #f8fbff 0%, #eef6ff 48%, #ddd8ff 100%);
 }
 
 .auth-brand {
   position: absolute;
-  top: 38px;
-  left: 44px;
+  top: 42px;
+  left: 48px;
   z-index: 3;
   display: flex;
   align-items: center;
   gap: 14px;
-  color: #070b16;
-  font-size: 28px;
+  color: #050816;
+  font-size: 29px;
   font-weight: 900;
   letter-spacing: -0.03em;
 }
@@ -125,8 +107,8 @@ const showcaseImage = `url("${referenceImages.authShowcase}")`
 .auth-logo {
   position: relative;
   display: grid;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   place-items: center;
   border-radius: 12px;
   background: linear-gradient(135deg, #2563eb, #7657ff);
@@ -136,8 +118,8 @@ const showcaseImage = `url("${referenceImages.authShowcase}")`
 .auth-logo::before,
 .auth-logo::after {
   position: absolute;
-  width: 22px;
-  height: 22px;
+  width: 23px;
+  height: 23px;
   border-radius: 8px;
   background: rgba(113, 225, 255, 0.68);
   content: "";
@@ -159,7 +141,7 @@ const showcaseImage = `url("${referenceImages.authShowcase}")`
   width: 0;
   height: 0;
   border-bottom: 10px solid transparent;
-  border-left: 15px solid #fff;
+  border-left: 16px solid #fff;
   border-top: 10px solid transparent;
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.14));
 }
@@ -167,7 +149,7 @@ const showcaseImage = `url("${referenceImages.authShowcase}")`
 .auth-hero-content {
   position: relative;
   z-index: 2;
-  padding: 124px 46px 0;
+  padding: 136px 48px 0;
 }
 
 .auth-pill {
@@ -176,7 +158,7 @@ const showcaseImage = `url("${referenceImages.authShowcase}")`
   gap: 8px;
   height: 28px;
   padding: 0 13px;
-  border: 1px solid rgba(124, 92, 255, 0.28);
+  border: 1px solid rgba(124, 92, 255, 0.3);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.78);
   box-shadow: 0 8px 18px rgba(79, 70, 229, 0.08);
@@ -187,11 +169,11 @@ const showcaseImage = `url("${referenceImages.authShowcase}")`
 
 .auth-title {
   margin: 28px 0 0;
-  color: #070b16;
-  font-size: clamp(36px, 3.15vw, 46px);
-  font-weight: 950;
+  color: #050816;
+  font-size: 35px;
+  font-weight: 600;
   letter-spacing: -0.055em;
-  line-height: 1.14;
+  line-height: 1.5;
 }
 
 .auth-title span {
@@ -251,89 +233,160 @@ const showcaseImage = `url("${referenceImages.authShowcase}")`
 
 .auth-illustration {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  width: min(520px, 74%);
-  height: 286px;
-  background-image: v-bind(showcaseImage);
-  background-position: 43% 100%;
-  background-repeat: no-repeat;
-  background-size: 1060px auto;
-  opacity: 0.74;
-  mix-blend-mode: multiply;
-  mask-image: linear-gradient(90deg, transparent 0%, #000 18%, #000 100%);
+  right: 22px;
+  bottom: 30px;
+  width: 500px;
+  height: 290px;
 }
 
-.auth-form-zone {
-  display: flex;
-  height: 100vh;
-  min-width: 0;
-  flex: 1 1 auto;
-  align-items: stretch;
-  justify-content: center;
-  overflow: hidden;
-  padding: 0 72px 0 48px;
-  background:
-    radial-gradient(circle at 52% 50%, rgba(148, 163, 184, 0.12), transparent 32%),
-    #fff;
+.orbit {
+  position: absolute;
+  left: 84px;
+  bottom: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  border-radius: 50%;
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.85);
+  transform: rotate(-7deg);
 }
 
-.auth-form-stack {
-  display: flex;
-  width: min(506px, 100%);
-  height: 100%;
-  min-height: 0;
-  flex: 0 1 506px;
-  flex-direction: column;
-  justify-content: center;
-  padding: 36px 0;
-  box-sizing: border-box;
+.orbit-one {
+  width: 320px;
+  height: 96px;
 }
 
-.auth-footer {
-  flex: 0 0 auto;
-  margin-top: 18px;
-  color: #8a94a6;
-  text-align: center;
-  font-size: 13px;
-  font-weight: 500;
+.orbit-two {
+  left: 118px;
+  bottom: 34px;
+  width: 240px;
+  height: 72px;
 }
 
-.auth-footer div {
-  display: flex;
-  justify-content: center;
-  gap: 18px;
+.bot {
+  position: absolute;
+  left: 206px;
+  bottom: 42px;
+  width: 92px;
+  height: 104px;
+  border-radius: 50% 50% 44% 44%;
+  background: linear-gradient(180deg, #fff 0%, #d8d8ff 100%);
+  box-shadow: 0 18px 42px rgba(86, 76, 215, 0.28);
 }
 
-.auth-footer i {
-  width: 1px;
+.bot::before {
+  position: absolute;
+  top: 30px;
+  left: 18px;
+  width: 56px;
+  height: 34px;
+  border-radius: 18px;
+  background: #20275d;
+  box-shadow: inset 0 0 15px rgba(74, 222, 255, 0.32);
+  content: "";
+}
+
+.bot::after {
+  position: absolute;
+  right: 24px;
+  bottom: -26px;
+  left: 24px;
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.9);
+  content: "";
+}
+
+.bot-eye {
+  position: absolute;
+  z-index: 2;
+  top: 44px;
+  width: 9px;
   height: 13px;
-  background: #d8dde8;
+  border-radius: 999px;
+  background: #68e8ff;
+  box-shadow: 0 0 10px #68e8ff;
 }
 
-.auth-footer p {
-  margin: 10px 0 0;
+.bot-eye.left {
+  left: 35px;
 }
 
-@media (max-width: 1023px) {
+.bot-eye.right {
+  left: 55px;
+}
+
+.float-card {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.48);
+  box-shadow: 0 18px 36px rgba(92, 82, 204, 0.18);
+  backdrop-filter: blur(8px);
+}
+
+.card-game {
+  left: 86px;
+  top: 38px;
+  width: 124px;
+  height: 76px;
+  color: #6a5cff;
+  font-size: 18px;
+  font-weight: 900;
+  transform: rotate(-10deg);
+}
+
+.card-list {
+  right: 42px;
+  top: 40px;
+  width: 120px;
+  height: 74px;
+  transform: rotate(10deg);
+}
+
+.card-list::before {
+  width: 62px;
+  height: 30px;
+  border-top: 4px solid #fff;
+  border-bottom: 4px solid #fff;
+  content: "";
+}
+
+.card-image {
+  left: 100px;
+  bottom: 30px;
+  width: 76px;
+  height: 58px;
+  transform: rotate(-12deg);
+}
+
+.card-image::before {
+  width: 32px;
+  height: 24px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #9cc2ff, #7b65ff);
+  content: "";
+}
+
+.card-like {
+  right: 10px;
+  bottom: 92px;
+  width: 72px;
+  height: 54px;
+  transform: rotate(11deg);
+}
+
+.card-like::before {
+  color: #ef5cc8;
+  content: "LIKE";
+  font-size: 13px;
+  font-weight: 900;
+}
+
+@media (max-width: 1180px) {
   .auth-hero {
     display: none;
-  }
-
-  .auth-form-zone {
-    padding: 0 24px;
-  }
-}
-
-@media (max-height: 860px) {
-  .auth-form-stack {
-    justify-content: flex-start;
-    padding-top: 20px;
-    padding-bottom: 16px;
-  }
-
-  .auth-footer {
-    margin-top: 10px;
   }
 }
 
@@ -353,7 +406,9 @@ const showcaseImage = `url("${referenceImages.authShowcase}")`
   }
 
   .auth-illustration {
-    height: 238px;
+    bottom: 18px;
+    transform: scale(0.88);
+    transform-origin: right bottom;
   }
 }
 </style>

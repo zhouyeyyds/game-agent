@@ -1,9 +1,9 @@
 <template>
-  <section class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+  <section class="rounded-lg border border-emerald-200 bg-emerald-50 p-5">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
-        <p class="m-0 text-xs font-black uppercase tracking-[0.24em] text-emerald-600">Ready to publish</p>
-        <h3 class="mt-2 text-2xl font-black text-slate-950">{{ task.result.gameId ? '预览已生成' : '生成完成' }}</h3>
+        <p class="m-0 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-600">Ready to publish</p>
+        <h3 class="mt-2 text-2xl font-semibold text-slate-950">{{ task.result.gameId ? '预览已生成' : '生成完成' }}</h3>
         <p class="mt-2 break-all text-sm leading-6 text-slate-600">{{ task.result.manifestUrl }}</p>
       </div>
       <div class="flex flex-wrap gap-3">

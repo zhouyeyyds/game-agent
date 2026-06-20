@@ -1,7 +1,7 @@
 <template>
   <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-    <el-empty v-if="logs.length === 0" description="Agent logs will appear after generation starts" class="md:col-span-2 xl:col-span-4" />
-    <article v-for="log in logs" :key="log.id" class="rounded-2xl border border-slate-200 bg-white p-4">
+    <el-empty v-if="logs.length === 0" description="生成开始后会显示智能体日志" class="md:col-span-2 xl:col-span-4" />
+    <article v-for="log in logs" :key="log.id" class="rounded-lg border border-slate-200 bg-white p-4">
       <div class="mb-3 flex items-center justify-between gap-3">
         <el-tag :type="tagType(log.level)" size="small" round>{{ log.nodeName }}</el-tag>
         <span class="text-xs text-slate-400">{{ formatTime(log.createdAt) }}</span>
