@@ -83,6 +83,7 @@
           <el-upload
             drag
             multiple
+            accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,application/json"
             :limit="20"
             :show-file-list="false"
             :http-request="handleUpload"

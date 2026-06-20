@@ -1,6 +1,7 @@
 from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
+from typing import Annotated
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
@@ -15,12 +16,16 @@ from app.schemas.asset import AssetResponse
 
 router = APIRouter(prefix="/assets", tags=["assets"])
 
-MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 ALLOWED_CONTENT_TYPES = {
     "image/png",
     "image/jpeg",
     "image/webp",
     "image/gif",
+    "video/mp4",
+    "video/webm",
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "text/plain",
     "application/json",
 }
@@ -33,9 +38,9 @@ def safe_filename(filename: str) -> str:
 
 @router.post("", response_model=AssetResponse)
 async def upload_asset(
-    file: UploadFile = File(...),
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    file: Annotated[UploadFile, File(...)],
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> AssetResponse:
     content_type = file.content_type or "application/octet-stream"
     if content_type not in ALLOWED_CONTENT_TYPES:
@@ -48,7 +53,10 @@ async def upload_asset(
     if not content:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Empty file")
     if len(content) > MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="File too large")
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="File too large",
+        )
 
     asset_id = str(uuid4())
     filename = safe_filename(file.filename or "asset")
