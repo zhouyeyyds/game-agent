@@ -68,10 +68,13 @@
       :publish-tags="publishTags"
       :build-info-rows="buildInfoRows"
       :publishing="publishing"
+      :published="isCurrentTaskPublished"
+      :saving-publish-info="savingPublishInfo"
       @back-to-create="backToCreateStart"
       @back-to-edit="backToEdit"
       @regenerate="regenerate"
       @publish="publish"
+      @save-publish-info="savePublishInfo"
       @copy="copyText"
       @upload-cover="handleCoverUpload"
       @add-tag="addPublishTag"
@@ -155,6 +158,7 @@ const {
   loading,
   historyLoading,
   publishing,
+  savingPublishInfo,
   canceling,
   retrying,
   error,
@@ -164,10 +168,11 @@ const idea = ref("");
 const uploadedAssets = ref<AssetResponse[]>([]);
 const uploadingCount = ref(0);
 const previewManifest = ref<GameManifest | null>(null);
-const publishTitle = ref("迷雾之城：冥歌");
-const publishDescription = ref(
-  "在迷雾与诅咒笼罩的古城中探寻真相，你的选择将决定众人的命运。",
-);
+const defaultPublishTitle = "迷雾之城：冥歌";
+const defaultPublishDescription =
+  "在迷雾与诅咒笼罩的古城中探寻真相，你的选择将决定众人的命运。";
+const publishTitle = ref(defaultPublishTitle);
+const publishDescription = ref(defaultPublishDescription);
 const publishCoverUrl = ref(referenceImages.playRunningImage);
 const publishTags = ref(["角色扮演", "剧情", "暗黑奇幻", "单机"]);
 const coverUploading = ref(false);
@@ -458,10 +463,13 @@ const buildInfoRows = computed<InfoRow[]>(() => {
     { label: "Bundle URL", value: deriveBundleUrl(manifestUrl), copy: true },
     {
       label: "发布状态",
-      value: currentTask.value?.result.gameId ? "已发布" : "未发布",
+      value: currentTask.value?.result.publishedAt ? "已发布" : "未发布",
     },
   ];
 });
+const isCurrentTaskPublished = computed(() =>
+  Boolean(currentTask.value?.result.publishedAt),
+);
 
 function isGameManifest(value: unknown): value is GameManifest {
   if (!value || typeof value !== "object") return false;
@@ -640,10 +648,40 @@ async function cancelCurrent() {
 }
 
 async function publish() {
-  const task = await createTask.publishCurrentTask();
+  const payload = buildPublishPayload();
+  if (!payload) return;
+  const task = await createTask.publishCurrentTask(payload);
   if (task?.result.gameId) {
     ElMessage.success("已发布到首页");
   }
+}
+
+async function savePublishInfo() {
+  const payload = buildPublishPayload();
+  if (!payload) return;
+  const task = await createTask.saveCurrentGameInfo(payload);
+  if (task?.result.gameId) {
+    ElMessage.success("发布信息已保存");
+  }
+}
+
+function buildPublishPayload() {
+  const title = publishTitle.value.trim();
+  const description = publishDescription.value.trim();
+  if (!title) {
+    ElMessage.warning("请填写游戏标题");
+    return null;
+  }
+  if (!description) {
+    ElMessage.warning("请填写游戏描述");
+    return null;
+  }
+  return {
+    title,
+    description,
+    coverUrl: publishCoverUrl.value || null,
+    tags: [...new Set(publishTags.value.map((tag) => tag.trim()).filter(Boolean))],
+  };
 }
 
 async function handleCoverUpload(file: File) {
@@ -716,6 +754,18 @@ async function copyText(value: string) {
 }
 
 watch(
+  () => currentTask.value?.result,
+  (result) => {
+    if (!result) return;
+    publishTitle.value = result.title || previewManifest.value?.title || defaultPublishTitle;
+    publishDescription.value = result.description || defaultPublishDescription;
+    publishCoverUrl.value = result.coverUrl || referenceImages.playRunningImage;
+    publishTags.value = result.tags?.length ? result.tags : [];
+  },
+  { immediate: true },
+);
+
+watch(
   () => currentTask.value?.result.manifestUrl,
   async (manifestUrl) => {
     if (!manifestUrl) return;
@@ -726,7 +776,7 @@ watch(
       const payload = await response.json();
       if (!isGameManifest(payload)) throw new Error("Manifest 协议不合法");
       previewManifest.value = payload;
-      publishTitle.value = payload.title;
+      if (!currentTask.value?.result.title) publishTitle.value = payload.title;
     } catch (caught) {
       ElMessage.error(
         caught instanceof Error ? caught.message : "预览加载失败",

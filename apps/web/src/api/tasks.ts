@@ -8,6 +8,18 @@ export interface CreateTaskPayload {
 export interface TaskResult {
   gameId: string | null
   manifestUrl: string | null
+  publishedAt: string | null
+  title: string | null
+  description: string | null
+  coverUrl: string | null
+  tags: string[]
+}
+
+export interface PublishGamePayload {
+  title: string
+  description: string
+  coverUrl?: string | null
+  tags: string[]
 }
 
 export interface GenerationTaskResponse {
@@ -65,8 +77,9 @@ export function retryTask(taskId: string) {
   })
 }
 
-export function publishTask(taskId: string) {
+export function publishTask(taskId: string, payload: PublishGamePayload) {
   return apiRequest<GenerationTaskResponse>(`/api/generation-tasks/${taskId}/publish`, {
     method: 'POST',
+    data: payload,
   })
 }

@@ -21,11 +21,21 @@
           <el-button @click="emit('back-to-edit')">再次编辑</el-button>
           <el-button @click="emit('regenerate')">重新生成</el-button>
           <el-button
+            v-if="published"
+            class="publish-button"
+            :loading="savingPublishInfo"
+            @click="emit('save-publish-info')"
+          >
+            保存修改
+          </el-button>
+          <el-button
+            v-else
             class="publish-button"
             :loading="publishing"
             @click="emit('publish')"
-            >发布到首页</el-button
           >
+            发布到首页
+          </el-button>
         </div>
       </section>
 
@@ -153,6 +163,8 @@ defineProps<{
   publishTags: string[];
   buildInfoRows: InfoRow[];
   publishing: boolean;
+  published: boolean;
+  savingPublishInfo: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -160,6 +172,7 @@ const emit = defineEmits<{
   "back-to-edit": [];
   regenerate: [];
   publish: [];
+  "save-publish-info": [];
   copy: [value: string];
   "upload-cover": [file: File];
   "add-tag": [tag: string];

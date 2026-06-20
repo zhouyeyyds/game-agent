@@ -127,12 +127,12 @@
                   ><CircleCheckFilled
                 /></el-icon>
               </div>
-              <p class="game-info-card__hot">12.4k 次游玩</p>
+              <p class="game-info-card__hot">{{ playCountLabel }} 次游玩</p>
             </div>
           </div>
 
           <p class="game-info-card__description">
-            在蒸汽与迷雾交织的维多利亚时代，你将扮演侦探艾登，调查一系列离奇的失踪案，揭开这座城市背后的黑暗秘密。
+            {{ gameDescription }}
           </p>
 
           <div class="game-info-card__tags">
@@ -141,7 +141,7 @@
 
           <div class="game-info-card__stats">
             <div>
-              <strong>12.4k</strong>
+              <strong>{{ playCountLabel }}</strong>
               <span>游玩次数</span>
             </div>
             <div>
@@ -202,7 +202,6 @@ const error = ref<string | null>(null);
 const isMuted = ref(false);
 const gameFrameRef = ref<RemoteGameFrameInstance | null>(null);
 
-const gameTags = ["冒险", "解谜", "角色扮演", "剧情", "悬疑", "维多利亚"];
 const relatedGames = [
   {
     title: "星露谷的夏天",
@@ -233,11 +232,23 @@ const relatedGames = [
 const gameTitle = computed(
   () => descriptor.value?.title || manifest.value?.title || "迷雾之城：哀歌",
 );
-const coverImage = computed(() =>
-  error.value
-    ? referenceImages.playErrorImage
-    : referenceImages.playRunningImage,
+const gameDescription = computed(
+  () =>
+    descriptor.value?.description ||
+    "在蒸汽与迷雾交织的维多利亚时代，你将扮演侦探艾登，调查一系列离奇的失踪案，揭开这座城市背后的黑暗秘密。",
 );
+const coverImage = computed(() =>
+  descriptor.value?.coverUrl ||
+  (error.value
+    ? referenceImages.playErrorImage
+    : referenceImages.playRunningImage),
+);
+const gameTags = computed(() =>
+  descriptor.value?.tags?.length
+    ? descriptor.value.tags
+    : ["冒险", "解谜", "角色扮演", "剧情", "悬疑", "维多利亚"],
+);
+const playCountLabel = computed(() => formatPlayCount(descriptor.value?.playCount ?? 0));
 
 const statusLabel = computed(() => {
   if (loading.value) return "加载中";
@@ -258,7 +269,12 @@ const statusLine = computed(() => {
 });
 
 const gameMeta = computed(() => [
-  { label: "发布时间", value: "2024-05-12 14:30" },
+  {
+    label: "发布时间",
+    value: descriptor.value?.publishedAt
+      ? new Date(descriptor.value.publishedAt).toLocaleString()
+      : "-",
+  },
   { label: "最后更新", value: "2024-05-20 09:15" },
   { label: "作品类型", value: "AI 生成游戏" },
   { label: "使用模型", value: "GPT-4o + AgentPlay Runtime" },
@@ -299,6 +315,12 @@ function restartGame() {
 
 function requestGameFullscreen() {
   gameFrameRef.value?.requestFullscreen();
+}
+
+function formatPlayCount(count: number) {
+  if (count >= 10000) return `${(count / 10000).toFixed(1)}万`;
+  if (count >= 1000) return `${(count / 1000).toFixed(1)}k`;
+  return String(count);
 }
 
 onMounted(loadGame);

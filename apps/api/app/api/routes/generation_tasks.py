@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from app.api.deps import get_current_user
 from app.core.constants import (
@@ -21,6 +21,7 @@ from app.schemas.task import (
     AgentLogResponse,
     CreateTaskRequest,
     GenerationTaskResponse,
+    PublishTaskRequest,
     TaskResult,
 )
 from app.services.generation_pipeline import run_generation_pipeline
@@ -40,13 +41,28 @@ StatusFilter = Annotated[str | None, Query(alias="status")]
 
 
 def to_task_response(task: GenerationTask) -> GenerationTaskResponse:
+    result = TaskResult(gameId=task.result_game_id, manifestUrl=task.result_manifest_url)
+    if task.result_game_id:
+        session = object_session(task)
+        game = session.get(Game, task.result_game_id) if session else None
+        if game:
+            result = TaskResult(
+                gameId=task.result_game_id,
+                manifestUrl=task.result_manifest_url,
+                publishedAt=game.published_at.isoformat() if game.published_at else None,
+                title=game.title,
+                description=game.description,
+                coverUrl=game.cover_url,
+                tags=game.tags or [],
+            )
+
     return GenerationTaskResponse(
         id=task.id,
         status=task.status,
         currentStep=task.current_step,
         ideaText=task.idea_text,
         assetIds=task.input_assets_json or [],
-        result=TaskResult(gameId=task.result_game_id, manifestUrl=task.result_manifest_url),
+        result=result,
         errorMessage=task.error_message,
         createdAt=task.created_at.isoformat() if task.created_at else None,
         startedAt=task.started_at.isoformat() if task.started_at else None,
@@ -263,6 +279,7 @@ def get_task_logs(
 @router.post("/{task_id}/publish", response_model=GenerationTaskResponse)
 def publish_task(
     task_id: str,
+    payload: PublishTaskRequest,
     user: CurrentUser,
     db: DbSession,
 ) -> GenerationTaskResponse:
@@ -311,7 +328,12 @@ def publish_task(
     if version.game_spec_json:
         validate_generation_snapshot(version.game_spec_json)
 
-    if game.status != GameStatus.PUBLISHED:
+    game.title = payload.title
+    game.description = payload.description
+    game.cover_url = payload.coverUrl
+    game.tags = payload.tags
+
+    if game.status != str(GameStatus.PUBLISHED):
         game.status = str(GameStatus.PUBLISHED)
         game.published_at = datetime.now(UTC)
         db.add(
@@ -322,6 +344,6 @@ def publish_task(
                 message="Published game to Home gallery.",
             )
         )
-        db.commit()
+    db.commit()
     db.refresh(task)
     return to_task_response(task)

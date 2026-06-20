@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
+import { updateGame } from '@/api/games'
 import {
   cancelTask,
   createGenerationTask,
@@ -12,6 +13,7 @@ import {
   type AgentLogResponse,
   type CreateTaskPayload,
   type GenerationTaskResponse,
+  type PublishGamePayload,
 } from '@/api/tasks'
 
 const terminalStatuses = new Set<GenerationTaskResponse['status']>(['succeeded', 'failed', 'canceled'])
@@ -23,6 +25,7 @@ export const useCreateTaskStore = defineStore('createTask', () => {
   const loading = ref(false)
   const historyLoading = ref(false)
   const publishing = ref(false)
+  const savingPublishInfo = ref(false)
   const canceling = ref(false)
   const retrying = ref(false)
   const error = ref<string | null>(null)
@@ -75,12 +78,12 @@ export const useCreateTaskStore = defineStore('createTask', () => {
     }
   }
 
-  async function publishCurrentTask() {
+  async function publishCurrentTask(payload: PublishGamePayload) {
     if (!currentTask.value) return null
     publishing.value = true
     error.value = null
     try {
-      currentTask.value = await publishTask(currentTask.value.id)
+      currentTask.value = await publishTask(currentTask.value.id, payload)
       await refreshLogs(currentTask.value.id)
       await loadHistory()
       return currentTask.value
@@ -89,6 +92,24 @@ export const useCreateTaskStore = defineStore('createTask', () => {
       throw caught
     } finally {
       publishing.value = false
+    }
+  }
+
+  async function saveCurrentGameInfo(payload: PublishGamePayload) {
+    const gameId = currentTask.value?.result.gameId
+    if (!currentTask.value || !gameId) return null
+    savingPublishInfo.value = true
+    error.value = null
+    try {
+      await updateGame(gameId, payload)
+      currentTask.value = await fetchTask(currentTask.value.id)
+      await loadHistory()
+      return currentTask.value
+    } catch (caught) {
+      error.value = caught instanceof Error ? caught.message : '保存发布信息失败'
+      throw caught
+    } finally {
+      savingPublishInfo.value = false
     }
   }
 
@@ -155,6 +176,7 @@ export const useCreateTaskStore = defineStore('createTask', () => {
     logs.value = []
     loading.value = false
     publishing.value = false
+    savingPublishInfo.value = false
     canceling.value = false
     retrying.value = false
     error.value = null
@@ -167,6 +189,7 @@ export const useCreateTaskStore = defineStore('createTask', () => {
     loading,
     historyLoading,
     publishing,
+    savingPublishInfo,
     canceling,
     retrying,
     error,
@@ -177,6 +200,7 @@ export const useCreateTaskStore = defineStore('createTask', () => {
     refreshLogs,
     pollTask,
     publishCurrentTask,
+    saveCurrentGameInfo,
     cancelCurrentTask,
     retryTaskById,
     stopPolling,

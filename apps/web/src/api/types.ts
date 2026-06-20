@@ -20,6 +20,11 @@ export interface GameListItem {
 
 export interface PlayDescriptor {
   gameId: string
+  description: string
+  coverUrl: string | null
+  tags: string[]
+  publishedAt: string | null
+  playCount: number
   title: string
   runtime: 'iframe_manifest_v1'
   manifestUrl: string
