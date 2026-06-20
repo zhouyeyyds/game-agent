@@ -45,11 +45,7 @@ textarea {
   overflow: hidden;
 }
 
-.workbench-page {
-  width: min(100%, 1880px);
-  margin: 0 auto;
-  padding: 14px 14px 28px;
-}
+
 
 @media (min-width: 1024px) {
   .workbench-page {

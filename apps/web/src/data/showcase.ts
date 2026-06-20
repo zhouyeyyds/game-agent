@@ -2,6 +2,7 @@ import authShowcase from '@/assets/reference/auth-showcase.png'
 import createFormImage from '@/assets/reference/create-form.png'
 import createPublishImage from '@/assets/reference/create-publish.png'
 import createTaskImage from '@/assets/reference/create-task.png'
+import homeHeroVisual from '@/assets/reference/home-hero-visual.png'
 import homeShowcase from '@/assets/reference/home-showcase.png'
 import playErrorImage from '@/assets/reference/play-error.png'
 import playLoadingImage from '@/assets/reference/play-loading.png'
@@ -12,6 +13,7 @@ export const referenceImages = {
   createFormImage,
   createPublishImage,
   createTaskImage,
+  homeHeroVisual,
   homeShowcase,
   playErrorImage,
   playLoadingImage,
