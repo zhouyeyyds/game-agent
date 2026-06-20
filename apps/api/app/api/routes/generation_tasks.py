@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, object_session
 
@@ -54,6 +54,7 @@ def to_task_response(task: GenerationTask) -> GenerationTaskResponse:
                 description=game.description,
                 coverUrl=game.cover_url,
                 tags=game.tags or [],
+                gameStatus=game.status,
             )
 
     return GenerationTaskResponse(
@@ -73,7 +74,7 @@ def to_task_response(task: GenerationTask) -> GenerationTaskResponse:
 
 def get_owned_task(task_id: str, user: User, db: Session) -> GenerationTask:
     task = db.get(GenerationTask, task_id)
-    if not task or task.user_id != user.id:
+    if not task or task.user_id != user.id or task.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
     return task
 
@@ -178,7 +179,10 @@ def list_tasks(
 ) -> list[GenerationTaskResponse]:
     bounded_limit = min(max(limit, 1), 100)
     bounded_offset = max(offset, 0)
-    query = select(GenerationTask).where(GenerationTask.user_id == user.id)
+    query = select(GenerationTask).where(
+        GenerationTask.user_id == user.id,
+        GenerationTask.deleted_at.is_(None),
+    )
     if status_filter:
         query = query.where(GenerationTask.status == status_filter)
     tasks = db.scalars(
@@ -196,6 +200,24 @@ def get_task(
     db: DbSession,
 ) -> GenerationTaskResponse:
     return to_task_response(get_owned_task(task_id, user, db))
+
+
+@router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_task(
+    task_id: str,
+    user: CurrentUser,
+    db: DbSession,
+) -> Response:
+    task = get_owned_task(task_id, user, db)
+    if task.status in ACTIVE_TASK_STATUSES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Active task cannot be deleted",
+        )
+
+    task.deleted_at = datetime.now(UTC)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/{task_id}/cancel", response_model=GenerationTaskResponse)
@@ -335,7 +357,8 @@ def publish_task(
 
     if game.status != str(GameStatus.PUBLISHED):
         game.status = str(GameStatus.PUBLISHED)
-        game.published_at = datetime.now(UTC)
+        if game.published_at is None:
+            game.published_at = datetime.now(UTC)
         db.add(
             AgentLog(
                 task_id=task.id,

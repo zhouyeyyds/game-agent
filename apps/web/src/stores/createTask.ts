@@ -1,10 +1,11 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-import { updateGame } from '@/api/games'
+import { unpublishGame, updateGame } from '@/api/games'
 import {
   cancelTask,
   createGenerationTask,
+  deleteTask,
   fetchTask,
   fetchTaskLogs,
   fetchTasks,
@@ -26,8 +27,10 @@ export const useCreateTaskStore = defineStore('createTask', () => {
   const historyLoading = ref(false)
   const publishing = ref(false)
   const savingPublishInfo = ref(false)
+  const unpublishingGame = ref(false)
   const canceling = ref(false)
   const retrying = ref(false)
+  const deletingTaskId = ref<string | null>(null)
   const error = ref<string | null>(null)
   const pollTimer = ref<number | null>(null)
 
@@ -113,6 +116,24 @@ export const useCreateTaskStore = defineStore('createTask', () => {
     }
   }
 
+  async function unpublishCurrentGame() {
+    const gameId = currentTask.value?.result.gameId
+    if (!currentTask.value || !gameId) return null
+    unpublishingGame.value = true
+    error.value = null
+    try {
+      await unpublishGame(gameId)
+      currentTask.value = await fetchTask(currentTask.value.id)
+      await loadHistory()
+      return currentTask.value
+    } catch (caught) {
+      error.value = caught instanceof Error ? caught.message : '下架游戏失败'
+      throw caught
+    } finally {
+      unpublishingGame.value = false
+    }
+  }
+
   async function loadHistory() {
     historyLoading.value = true
     try {
@@ -170,6 +191,26 @@ export const useCreateTaskStore = defineStore('createTask', () => {
     }
   }
 
+  async function deleteTaskById(taskId: string) {
+    deletingTaskId.value = taskId
+    error.value = null
+    try {
+      await deleteTask(taskId)
+      tasks.value = tasks.value.filter((task) => task.id !== taskId)
+      if (currentTask.value?.id === taskId) {
+        stopPolling()
+        currentTask.value = null
+        logs.value = []
+      }
+      return true
+    } catch (caught) {
+      error.value = caught instanceof Error ? caught.message : '删除任务失败'
+      throw caught
+    } finally {
+      deletingTaskId.value = null
+    }
+  }
+
   function reset() {
     stopPolling()
     currentTask.value = null
@@ -177,8 +218,10 @@ export const useCreateTaskStore = defineStore('createTask', () => {
     loading.value = false
     publishing.value = false
     savingPublishInfo.value = false
+    unpublishingGame.value = false
     canceling.value = false
     retrying.value = false
+    deletingTaskId.value = null
     error.value = null
   }
 
@@ -190,8 +233,10 @@ export const useCreateTaskStore = defineStore('createTask', () => {
     historyLoading,
     publishing,
     savingPublishInfo,
+    unpublishingGame,
     canceling,
     retrying,
+    deletingTaskId,
     error,
     startTask,
     loadHistory,
@@ -201,8 +246,10 @@ export const useCreateTaskStore = defineStore('createTask', () => {
     pollTask,
     publishCurrentTask,
     saveCurrentGameInfo,
+    unpublishCurrentGame,
     cancelCurrentTask,
     retryTaskById,
+    deleteTaskById,
     stopPolling,
     reset,
   }

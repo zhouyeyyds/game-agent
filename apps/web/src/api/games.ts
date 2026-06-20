@@ -16,3 +16,9 @@ export function updateGame(gameId: string, payload: PublishGamePayload) {
     data: payload,
   })
 }
+
+export function unpublishGame(gameId: string) {
+  return apiRequest<GameListItem>(`/api/games/${gameId}/unpublish`, {
+    method: 'POST',
+  })
+}

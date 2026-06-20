@@ -8,8 +8,8 @@
       :tasks="tasks"
       :loading="loading"
       :history-loading="historyLoading"
-      :canceling="canceling"
       :retrying="retrying"
+      :deleting-task-id="deletingTaskId"
       :can-generate="canGenerate"
       :is-image-asset="isImageAsset"
       :format-bytes="formatBytes"
@@ -18,8 +18,8 @@
       :task-status-label="taskStatusLabel"
       :task-progress-for="taskProgressFor"
       :task-result-summary="taskResultSummary"
-      :can-cancel-task="canCancelTask"
       :can-retry-task="canRetryTask"
+      :can-delete-task="canDeleteTask"
       @optimize-description="fillInspiration"
       @generate="generate"
       @upload="handleUpload"
@@ -29,6 +29,7 @@
       @view-history-task="viewHistoryTask"
       @cancel-history-task="cancelHistoryTask"
       @retry-history-task="retryHistoryTask"
+      @delete-history-task="deleteHistoryTask"
     />
 
     <component
@@ -69,12 +70,15 @@
       :build-info-rows="buildInfoRows"
       :publishing="publishing"
       :published="isCurrentTaskPublished"
+      :archived="isCurrentTaskArchived"
       :saving-publish-info="savingPublishInfo"
+      :unpublishing-game="unpublishingGame"
       @back-to-create="backToCreateStart"
       @back-to-edit="backToEdit"
       @regenerate="regenerate"
       @publish="publish"
       @save-publish-info="savePublishInfo"
+      @unpublish-game="unpublishGame"
       @copy="copyText"
       @upload-cover="handleCoverUpload"
       @add-tag="addPublishTag"
@@ -113,7 +117,7 @@ import {
   View,
   Wallet,
 } from "@element-plus/icons-vue";
-import { ElMessage, type UploadRequestOptions } from "element-plus";
+import { ElMessage, ElMessageBox, type UploadRequestOptions } from "element-plus";
 import { storeToRefs } from "pinia";
 import {
   computed,
@@ -159,8 +163,10 @@ const {
   historyLoading,
   publishing,
   savingPublishInfo,
+  unpublishingGame,
   canceling,
   retrying,
+  deletingTaskId,
   error,
 } = storeToRefs(createTask);
 
@@ -463,13 +469,21 @@ const buildInfoRows = computed<InfoRow[]>(() => {
     { label: "Bundle URL", value: deriveBundleUrl(manifestUrl), copy: true },
     {
       label: "发布状态",
-      value: currentTask.value?.result.publishedAt ? "已发布" : "未发布",
+      value: publishStatusLabel.value,
     },
   ];
 });
 const isCurrentTaskPublished = computed(() =>
-  Boolean(currentTask.value?.result.publishedAt),
+  currentTask.value?.result.gameStatus === "published",
 );
+const isCurrentTaskArchived = computed(() =>
+  currentTask.value?.result.gameStatus === "archived",
+);
+const publishStatusLabel = computed(() => {
+  if (isCurrentTaskPublished.value) return "已发布";
+  if (isCurrentTaskArchived.value) return "已下架";
+  return "未发布";
+});
 
 function isGameManifest(value: unknown): value is GameManifest {
   if (!value || typeof value !== "object") return false;
@@ -560,6 +574,10 @@ function canCancelTask(task: GenerationTaskResponse) {
 
 function canRetryTask(task: GenerationTaskResponse) {
   return task.status === "failed" || task.status === "canceled";
+}
+
+function canDeleteTask(task: GenerationTaskResponse) {
+  return task.status === "succeeded" || task.status === "failed" || task.status === "canceled";
 }
 
 function deriveBundleUrl(manifestUrl: string) {
@@ -665,6 +683,27 @@ async function savePublishInfo() {
   }
 }
 
+async function unpublishGame() {
+  try {
+    await ElMessageBox.confirm(
+      "下架后该游戏将从首页移除，玩家也无法继续通过游玩页访问。确定下架吗？",
+      "下架游戏",
+      {
+        confirmButtonText: "下架",
+        cancelButtonText: "取消",
+        type: "warning",
+      },
+    );
+    const task = await createTask.unpublishCurrentGame();
+    if (task?.result.gameId) {
+      ElMessage.success("游戏已下架");
+    }
+  } catch (caught) {
+    if (caught === "cancel" || caught === "close") return;
+    ElMessage.error(caught instanceof Error ? caught.message : "下架游戏失败");
+  }
+}
+
 function buildPublishPayload() {
   const title = publishTitle.value.trim();
   const description = publishDescription.value.trim();
@@ -741,6 +780,30 @@ async function cancelHistoryTask(task: GenerationTaskResponse) {
 async function retryHistoryTask(task: GenerationTaskResponse) {
   const nextTask = await createTask.retryTaskById(task.id);
   if (nextTask) ElMessage.success("已创建重试任务");
+}
+
+async function deleteHistoryTask(task: GenerationTaskResponse) {
+  if (!canDeleteTask(task)) {
+    ElMessage.warning("运行中的任务不能删除");
+    return;
+  }
+  try {
+    await ElMessageBox.confirm(
+      "删除后该任务将从历史列表隐藏，生成产物和已发布游戏不会被删除。确定删除吗？",
+      "删除任务",
+      {
+        confirmButtonText: "删除",
+        cancelButtonText: "取消",
+        type: "warning",
+      },
+    );
+    await createTask.deleteTaskById(task.id);
+    previewManifest.value = null;
+    ElMessage.success("任务已删除");
+  } catch (caught) {
+    if (caught === "cancel" || caught === "close") return;
+    ElMessage.error(caught instanceof Error ? caught.message : "删除任务失败");
+  }
 }
 
 async function copyText(value: string) {
@@ -1324,6 +1387,30 @@ onBeforeUnmount(() => createTask.stopPolling());
   flex-wrap: wrap;
   gap: 10px;
   justify-content: flex-end;
+}
+
+.recent-task__actions .history-action-button {
+  min-width: 58px;
+  height: 30px;
+  border: 0;
+  border-radius: 4px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.recent-task__actions .history-action-button + .history-action-button {
+  margin-left: 0;
+}
+
+.recent-task__actions .history-action-button--primary {
+  background: #f3f7ff;
+  color: #409eff;
+}
+
+.recent-task__actions .history-action-button--danger {
+  background: #fff5f5;
+  color: #ff6b6b;
 }
 
 .config-panel {
@@ -2238,6 +2325,24 @@ onBeforeUnmount(() => createTask.stopPolling());
   width: 106px;
   margin: 0;
   padding-inline: 18px;
+}
+
+.success-banner__actions .unpublish-button {
+  border-color: #fecaca;
+  background: #fff5f5;
+  color: #ef4444;
+}
+
+.archived-pill {
+  display: inline-flex;
+  height: 36px;
+  align-items: center;
+  border-radius: 7px;
+  background: #f8fafc;
+  padding: 0 14px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .preview-card h2,

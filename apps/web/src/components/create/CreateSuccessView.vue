@@ -29,12 +29,21 @@
             保存修改
           </el-button>
           <el-button
-            v-else
+            v-if="published"
+            class="unpublish-button"
+            :loading="unpublishingGame"
+            @click="emit('unpublish-game')"
+          >
+            下架游戏
+          </el-button>
+          <span v-else-if="archived" class="archived-pill">已下架</span>
+          <el-button
+            v-if="!published"
             class="publish-button"
             :loading="publishing"
             @click="emit('publish')"
           >
-            发布到首页
+            {{ archived ? "重新上架" : "发布到首页" }}
           </el-button>
         </div>
       </section>
@@ -164,7 +173,9 @@ defineProps<{
   buildInfoRows: InfoRow[];
   publishing: boolean;
   published: boolean;
+  archived: boolean;
   savingPublishInfo: boolean;
+  unpublishingGame: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -173,6 +184,7 @@ const emit = defineEmits<{
   regenerate: [];
   publish: [];
   "save-publish-info": [];
+  "unpublish-game": [];
   copy: [value: string];
   "upload-cover": [file: File];
   "add-tag": [tag: string];

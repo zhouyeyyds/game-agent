@@ -21,6 +21,7 @@ class TaskResult(BaseModel):
     description: str | None = None
     coverUrl: str | None = None
     tags: list[str] = Field(default_factory=list)
+    gameStatus: str | None = None
 
 
 class GenerationTaskResponse(BaseModel):

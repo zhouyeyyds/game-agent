@@ -7,12 +7,14 @@ from app.api.routes import assets, auth, games, generation_tasks, health
 from app.core.config import get_settings
 from app.core.database import Base, engine
 from app.core.storage import ensure_bucket
+from app.db.schema_upgrade import ensure_runtime_schema
 import app.models  # noqa: F401
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    ensure_runtime_schema(engine)
     ensure_bucket()
     yield
 

@@ -35,6 +35,7 @@ def to_game_list_item(game: Game) -> GameListItem:
         title=game.title,
         description=game.description,
         coverUrl=game.cover_url,
+        status=game.status,
         author=AuthorResponse(id=game.owner.id, displayName=game.owner.display_name),
         tags=game.tags or [],
         publishedAt=game.published_at.isoformat() if game.published_at else None,
@@ -57,6 +58,24 @@ def update_game(
     game.description = payload.description
     game.cover_url = payload.coverUrl
     game.tags = payload.tags
+    db.commit()
+    db.refresh(game)
+    return to_game_list_item(game)
+
+
+@router.post("/{game_id}/unpublish", response_model=GameListItem)
+def unpublish_game(
+    game_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> GameListItem:
+    game = db.scalar(select(Game).options(joinedload(Game.owner)).where(Game.id == game_id))
+    if not game or game.owner_user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found")
+    if game.status != str(GameStatus.PUBLISHED):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Game is not published")
+
+    game.status = str(GameStatus.ARCHIVED)
     db.commit()
     db.refresh(game)
     return to_game_list_item(game)

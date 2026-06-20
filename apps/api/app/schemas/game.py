@@ -12,6 +12,7 @@ class GameListItem(BaseModel):
     title: str
     description: str
     coverUrl: str | None
+    status: str
     author: AuthorResponse
     tags: list[str]
     publishedAt: str | None

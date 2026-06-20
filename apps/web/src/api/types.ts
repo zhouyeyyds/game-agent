@@ -9,6 +9,7 @@ export interface GameListItem {
   title: string
   description: string
   coverUrl: string | null
+  status: string
   author: {
     id: string
     displayName: string

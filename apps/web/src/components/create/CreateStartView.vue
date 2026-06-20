@@ -169,26 +169,29 @@
               <strong>{{ taskResultSummary(task) }}</strong>
             </div>
             <div class="recent-task__actions">
-              <el-button size="small" @click="emit('view-history-task', task)"
-                >查看</el-button
-              >
               <el-button
-                v-if="canCancelTask(task)"
                 size="small"
-                type="danger"
-                plain
-                :loading="canceling"
-                @click="emit('cancel-history-task', task)"
+                class="history-action-button history-action-button--primary"
+                @click="emit('view-history-task', task)"
+                >详情</el-button
               >
-                取消
-              </el-button>
               <el-button
                 v-if="canRetryTask(task)"
                 size="small"
+                class="history-action-button history-action-button--primary"
                 :loading="retrying"
                 @click="emit('retry-history-task', task)"
               >
-                重试
+                重新生成
+              </el-button>
+              <el-button
+                v-if="canDeleteTask(task)"
+                size="small"
+                class="history-action-button history-action-button--danger"
+                :loading="deletingTaskId === task.id"
+                @click="emit('delete-history-task', task)"
+              >
+                删除
               </el-button>
             </div>
           </div>
@@ -227,8 +230,8 @@ defineProps<{
   tasks: GenerationTaskResponse[];
   loading: boolean;
   historyLoading: boolean;
-  canceling: boolean;
   retrying: boolean;
+  deletingTaskId: string | null;
   canGenerate: boolean;
   isImageAsset: (asset: AssetResponse) => boolean;
   formatBytes: (value: number) => string;
@@ -237,8 +240,8 @@ defineProps<{
   taskStatusLabel: (status: GenerationTaskResponse["status"]) => string;
   taskProgressFor: (task: GenerationTaskResponse) => number;
   taskResultSummary: (task: GenerationTaskResponse) => string;
-  canCancelTask: (task: GenerationTaskResponse) => boolean;
   canRetryTask: (task: GenerationTaskResponse) => boolean;
+  canDeleteTask: (task: GenerationTaskResponse) => boolean;
 }>();
 
 const emit = defineEmits<{
@@ -251,6 +254,7 @@ const emit = defineEmits<{
   "view-history-task": [task: GenerationTaskResponse];
   "cancel-history-task": [task: GenerationTaskResponse];
   "retry-history-task": [task: GenerationTaskResponse];
+  "delete-history-task": [task: GenerationTaskResponse];
 }>();
 
 function handleUpload(options: UploadRequestOptions) {

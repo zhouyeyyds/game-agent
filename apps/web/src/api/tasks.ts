@@ -13,6 +13,7 @@ export interface TaskResult {
   description: string | null
   coverUrl: string | null
   tags: string[]
+  gameStatus: 'draft' | 'published' | 'archived' | string | null
 }
 
 export interface PublishGamePayload {
@@ -81,5 +82,11 @@ export function publishTask(taskId: string, payload: PublishGamePayload) {
   return apiRequest<GenerationTaskResponse>(`/api/generation-tasks/${taskId}/publish`, {
     method: 'POST',
     data: payload,
+  })
+}
+
+export function deleteTask(taskId: string) {
+  return apiRequest<void>(`/api/generation-tasks/${taskId}`, {
+    method: 'DELETE',
   })
 }
