@@ -872,8 +872,7 @@ onBeforeUnmount(() => createTask.stopPolling());
   position: relative;
 }
 
-.task-layout,
-.publish-layout {
+.task-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 390px;
   gap: 30px;
@@ -882,8 +881,10 @@ onBeforeUnmount(() => createTask.stopPolling());
 }
 
 .publish-layout {
-  grid-template-columns: minmax(0, 1fr) 488px;
+  display: flex;
+  align-items: flex-start;
   gap: 30px;
+  min-width: 0;
 }
 
 .create-grid {
@@ -898,6 +899,11 @@ onBeforeUnmount(() => createTask.stopPolling());
 .publish-side {
   display: grid;
   gap: 16px;
+}
+
+.publish-main {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .task-main {
@@ -2239,15 +2245,18 @@ onBeforeUnmount(() => createTask.stopPolling());
   align-items: center;
   justify-content: space-between;
   gap: 22px;
+  min-width: 0;
   min-height: 92px;
+  overflow: hidden;
   padding: 18px 22px;
 }
 
 .success-banner__content {
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
   gap: 22px;
-  min-width: 0;
+  min-width: 260px;
 }
 
 .success-banner__badge {
@@ -2306,11 +2315,16 @@ onBeforeUnmount(() => createTask.stopPolling());
 
 .success-banner__actions {
   display: flex;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
   gap: 12px;
+  justify-content: flex-end;
+  max-width: 520px;
+  min-width: 0;
 }
 
 .success-banner__actions .el-button {
+  flex: 0 0 auto;
   min-width: 88px;
   height: 36px;
   border-color: #d8e0ef;
@@ -2322,7 +2336,7 @@ onBeforeUnmount(() => createTask.stopPolling());
 }
 
 .success-banner__actions .publish-button {
-  width: 106px;
+  min-width: 106px;
   margin: 0;
   padding-inline: 18px;
 }
@@ -2425,7 +2439,13 @@ onBeforeUnmount(() => createTask.stopPolling());
 }
 
 .publish-side {
+  position: sticky;
+  top: 104px;
+  flex: 0 0 488px;
+  width: 488px;
+  max-width: 488px;
   gap: 20px;
+  min-width: 0;
 }
 
 .publish-card {
@@ -2564,11 +2584,49 @@ onBeforeUnmount(() => createTask.stopPolling());
   }
 }
 
+@media (max-width: 1500px) and (min-width: 1321px) {
+  .publish-layout {
+    gap: 24px;
+  }
+
+  .publish-side {
+    flex-basis: 420px;
+    width: 420px;
+    max-width: 420px;
+  }
+
+  .success-banner {
+    align-items: flex-start;
+  }
+
+  .success-banner__content {
+    min-width: 240px;
+  }
+
+  .success-banner__actions {
+    max-width: 420px;
+  }
+}
+
 @media (max-width: 1320px) {
   .create-grid,
-  .task-layout,
-  .publish-layout {
+  .task-layout {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .publish-layout {
+    flex-direction: column;
+  }
+
+  .publish-main,
+  .publish-side {
+    width: 100%;
+  }
+
+  .publish-side {
+    position: static;
+    flex: 0 1 auto;
+    max-width: none;
   }
 
   .config-panel {
