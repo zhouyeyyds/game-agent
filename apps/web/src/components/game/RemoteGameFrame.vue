@@ -13,10 +13,11 @@
     <div v-else class="remote-game-frame__stage">
       <iframe
         v-if="manifest"
+        :key="frameKey"
         ref="frameRef"
         class="remote-game-frame__iframe"
         sandbox="allow-scripts"
-        :src="manifest.entryUrl"
+        :src="frameSrc"
         :title="manifest.title"
       />
       <div v-else class="remote-game-frame__loading">
@@ -58,6 +59,17 @@ const emit = defineEmits<{
 const shellRef = ref<HTMLDivElement | null>(null)
 const frameRef = ref<HTMLIFrameElement | null>(null)
 const gameStatus = ref<'loading' | 'ready' | 'completed' | 'error'>('loading')
+const restartCount = ref(0)
+
+const frameSrc = computed(() => {
+  if (!props.manifest) return ''
+  if (restartCount.value === 0) return props.manifest.entryUrl
+  return appendRestartParam(props.manifest.entryUrl, restartCount.value)
+})
+
+const frameKey = computed(() =>
+  props.manifest ? `${frameSrc.value}:${restartCount.value}` : 'empty',
+)
 
 const statusText = computed(() => {
   if (props.error) return '加载失败'
@@ -69,6 +81,7 @@ const statusText = computed(() => {
 
 watch(() => props.manifest?.entryUrl, () => {
   gameStatus.value = 'loading'
+  restartCount.value = 0
 })
 
 function handleMessage(event: MessageEvent) {
@@ -94,6 +107,21 @@ function handleMessage(event: MessageEvent) {
 function restart() {
   frameRef.value?.contentWindow?.postMessage({ type: 'game.restart' }, '*')
   gameStatus.value = 'loading'
+  restartCount.value += 1
+}
+
+function appendRestartParam(entryUrl: string, count: number) {
+  try {
+    const url = new URL(entryUrl, window.location.href)
+    url.searchParams.set('__agentplay_restart', String(count))
+    return url.toString()
+  } catch {
+    const hashIndex = entryUrl.indexOf('#')
+    const base = hashIndex >= 0 ? entryUrl.slice(0, hashIndex) : entryUrl
+    const hash = hashIndex >= 0 ? entryUrl.slice(hashIndex) : ''
+    const separator = base.includes('?') ? '&' : '?'
+    return `${base}${separator}__agentplay_restart=${count}${hash}`
+  }
 }
 
 async function requestFullscreen() {
