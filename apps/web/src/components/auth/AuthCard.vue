@@ -7,51 +7,8 @@
       @change="handleTabChange"
     />
 
-    <el-form class="auth-form" label-position="top" @submit.prevent="submit">
-      <el-form-item v-if="isRegister" label="昵称">
-        <el-input
-          v-model="displayName"
-          :prefix-icon="User"
-          placeholder="Creator"
-          size="large"
-        />
-      </el-form-item>
-
-      <el-form-item label="邮箱">
-        <el-input
-          v-model="email"
-          :prefix-icon="Message"
-          placeholder="请输入邮箱地址"
-          size="large"
-        />
-      </el-form-item>
-
-      <el-form-item label="密码">
-        <el-input
-          v-model="password"
-          :prefix-icon="Lock"
-          type="password"
-          show-password
-          placeholder="请输入密码"
-          size="large"
-        />
-      </el-form-item>
-
-      <div v-if="!isRegister" class="auth-options">
-        <el-checkbox v-model="remember">记住我</el-checkbox>
-        <button type="button">忘记密码?</button>
-      </div>
-
-      <el-button
-        class="auth-submit"
-        size="large"
-        type="primary"
-        :loading="auth.loading"
-        @click="submit"
-      >
-        {{ isRegister ? "注册" : "登录" }}
-      </el-button>
-    </el-form>
+    <RegisterForm v-if="isRegister" />
+    <LoginForm v-else />
 
     <div class="auth-divider">
       <span />
@@ -114,27 +71,26 @@
 </template>
 
 <script setup lang="ts">
-import { Lock, Message, User } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
-import { fetchOAuthProviders, oauthStartUrl, type OAuthProviderStatus } from "@/api/auth";
-import { useAuthStore } from "@/stores/auth";
+import {
+  fetchOAuthProviders,
+  oauthStartUrl,
+  type OAuthProviderStatus,
+} from "@/api/auth";
+import LoginForm from "@/components/auth/LoginForm.vue";
+import RegisterForm from "@/components/auth/RegisterForm.vue";
 
 const props = defineProps<{
   mode: "login" | "register";
 }>();
 
-const auth = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 
 const activeMode = ref(props.mode);
-const remember = ref(true);
-const displayName = ref("Creator");
-const email = ref("");
-const password = ref("");
 const providers = ref<OAuthProviderStatus[]>([]);
 const providersLoading = ref(false);
 
@@ -181,42 +137,18 @@ async function loadOAuthProviders() {
 
 function startGitHubOAuth() {
   if (!githubProvider.value?.configured) {
-    ElMessage.warning("GitHub OAuth 未配置，请先设置 GitHub OAuth App 的 Client ID 和 Secret");
+    ElMessage.warning(
+      "GitHub OAuth 未配置，请先设置 GitHub OAuth App 的 Client ID 和 Secret",
+    );
     return;
   }
   window.location.href = oauthStartUrl("github", currentRedirect());
 }
 
 function startGoogleOAuth() {
-  ElMessage.info("Google OAuth demo 阶段暂未接入，当前仅 GitHub 支持真实授权登录");
-}
-
-async function submit() {
-  try {
-    if (isRegister.value) {
-      await auth.register({
-        displayName: displayName.value || "Creator",
-        email: email.value || "creator@example.com",
-        password: password.value || "password123",
-      });
-      await router.push("/create");
-      return;
-    }
-
-    await auth.login({
-      email: email.value || "demo@example.com",
-      password: password.value || "password123",
-    });
-    await router.push(String(route.query.redirect || "/"));
-  } catch (error) {
-    ElMessage.error(
-      error instanceof Error
-        ? error.message
-        : isRegister.value
-          ? "注册失败"
-          : "登录失败",
-    );
-  }
+  ElMessage.info(
+    "Google OAuth demo 阶段暂未接入，当前仅 GitHub 支持真实授权登录",
+  );
 }
 
 onMounted(() => {
@@ -234,7 +166,8 @@ function formatOAuthError(value: string) {
     "GitHub OAuth is not configured": "GitHub OAuth 未配置",
     "OAuth state mismatch": "GitHub 授权状态校验失败，请重新登录",
     "Invalid OAuth state": "GitHub 授权状态已失效，请重新登录",
-    "GitHub account has no verified primary email": "GitHub 账号缺少已验证主邮箱",
+    "GitHub account has no verified primary email":
+      "GitHub 账号缺少已验证主邮箱",
     "GitHub OAuth request failed": "GitHub 授权请求失败，请稍后重试",
   };
   return knownMessages[value] || `第三方登录失败：${value}`;
@@ -255,7 +188,7 @@ function formatOAuthError(value: string) {
   box-shadow: 0 24px 50px rgba(15, 23, 42, 0.1);
 }
 
-/* .auth-tabs {
+.auth-tabs {
   margin: 0;
 }
 
@@ -282,53 +215,6 @@ function formatOAuthError(value: string) {
   background: #3f9df5;
   color: #5d49ff;
   box-shadow: 0 6px 14px rgba(47, 99, 255, 0.16);
-} */
-
-.auth-form {
-  margin-top: 26px;
-}
-
-.auth-form :deep(.el-form-item) {
-  margin-bottom: 18px;
-}
-
-.auth-form :deep(.el-form-item__label) {
-  margin-bottom: 8px;
-  color: #0f172a;
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.auth-form :deep(.el-input__wrapper) {
-  height: 56px;
-  border-radius: 8px !important;
-  box-shadow: 0 0 0 1px #dce3ef inset;
-}
-
-.auth-options {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: -1px 0 24px;
-}
-
-.auth-options button {
-  border: 0;
-  background: transparent;
-  color: #6555ff;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.auth-submit {
-  width: 100%;
-  height: 58px;
-  border: 0;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #2f63ff, #7c3aed);
-  font-size: 18px;
-  font-weight: 900;
 }
 
 .auth-divider {
@@ -395,16 +281,6 @@ function formatOAuthError(value: string) {
     padding: 32px 48px 24px;
   }
 
-  .auth-form {
-    margin-top: 18px;
-  }
-
-  .auth-form :deep(.el-form-item) {
-    margin-bottom: 12px;
-  }
-
-  .auth-form :deep(.el-input__wrapper),
-  .auth-submit,
   .social-buttons :deep(.el-button) {
     height: 48px;
   }
