@@ -13,7 +13,7 @@ manifest 示例：
   "versionId": "...",
   "title": "...",
   "entry": "index.html",
-  "entryUrl": "http://192.168.150.101:19000/game-agent/games/.../index.html",
+  "entryUrl": "http://${VM_HOST}:19000/game-agent/games/.../index.html",
   "assets": [],
   "permissions": {
     "network": false,
@@ -29,7 +29,7 @@ manifest 示例：
   "gameId": "...",
   "title": "...",
   "runtime": "iframe_manifest_v1",
-  "manifestUrl": "http://192.168.150.101:19000/game-agent/games/.../manifest.json",
+  "manifestUrl": "http://${VM_HOST}:19000/game-agent/games/.../manifest.json",
   "storagePrefix": "games/.../versions/...",
   "sandbox": {
     "allowScripts": true,
@@ -82,4 +82,3 @@ play_fullscreen
 ```
 
 这些事件会发送到 `POST /api/telemetry/events`，payload 中包含 `gameId`、manifest URL、加载耗时、iframe 消息内容或错误详情。
-

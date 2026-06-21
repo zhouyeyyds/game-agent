@@ -7,11 +7,14 @@
 | 源码仓库 | 已完成 | GitHub remote：`https://github.com/zhouyeyyds/game-agent.git`；当前仓库已有 18 次提交。 |
 | Demo 地址 | 本地演示 | 前端 `http://localhost:5173`，后端 `http://localhost:18000`；当前未配置线上地址。 |
 | 启动命令 | 已完成 | 见 README 的“本地启动”和 [docs/demo-checklist.md](demo-checklist.md)。 |
-| 测试数据 | 已完成 | `uv run python -m app.db.seed` 会创建 demo 用户和两个已发布远端游戏；演示时需要再通过 Create 生成并发布至少一个游戏。 |
+| 测试数据 | 已完成 | `uv run python -m app.db.seed` 会创建 demo 用户和两个已发布远端游戏；演示时可使用 [docs/prompt/game.txt](prompt/game.txt) 通过 Create 生成并发布至少一个游戏。 |
 | 环境变量 | 已完成 | `.env.example` 列出前端、后端、GitHub OAuth、MySQL、MinIO、LLM 等变量，不包含真实密钥。 |
 | 系统设计文档 | 已完成 | [docs/architecture.md](architecture.md)、[docs/runtime-protocol.md](runtime-protocol.md)。 |
 | 技术栈 | 已完成 | README 的“技术栈”章节。 |
 | 完成度说明 | 已完成 | README 的“完成度说明”章节；本文件下方也列出 demo 限制和后续迭代。 |
+| 测试与验证证据 | 已完成 | 截图见 [docs/demo-assets.md](demo-assets.md)，包含登录、Home、Create 和 Play；演示视频见 [docs/video/AgentPlay演示视频.mp4](video/AgentPlay演示视频.mp4)。 |
+| 演示视频 | 已完成 | [docs/video/AgentPlay演示视频.mp4](video/AgentPlay演示视频.mp4)，覆盖登录、Create、发布、Home 和 Play。 |
+| AI 协作记录 | 已完成 | 测试生成提示词见 [docs/prompt/game.txt](prompt/game.txt)，可用于复现 Create 生成链路。 |
 
 ## 启动命令
 
@@ -64,10 +67,16 @@ uv run python -m app.db.seed
 1. 启动 MySQL、MinIO、后端和前端。
 2. 使用 `demo@example.com` 登录。
 3. 打开 `/create`。
-4. 输入创意并可选上传素材。
+4. 输入创意并可选上传素材；可直接使用 [docs/prompt/game.txt](prompt/game.txt) 中的测试提示词。
 5. 等待任务生成成功。
 6. 预览并发布。
 7. 回到 Home，确认新生成游戏出现在首页。
+
+## 演示资产
+
+- 演示视频：[docs/video/AgentPlay演示视频.mp4](video/AgentPlay演示视频.mp4)。
+- 界面截图：[docs/demo-assets.md](demo-assets.md) 汇总登录、Home、Create、Play 的截图路径和说明。
+- 测试提示词：[docs/prompt/game.txt](prompt/game.txt)，包含“霓虹躲避球”和“森林符文解谜”两组生成游戏提示词。
 
 ## 已交付能力
 
@@ -99,4 +108,5 @@ uv run python -m app.db.seed
 - 实现 Google OAuth callback。
 - 增加 Play 推荐、搜索、标签筛选、评分和收藏接口。
 - 增加视频/PDF/DOCX 内容抽取和可选多模态模型调用。
+
 

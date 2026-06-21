@@ -24,7 +24,7 @@
 1. 使用 `demo@example.com / password123` 登录。
 2. 打开 Create 页面。
 3. 可选上传图片或文件素材。
-4. 输入创意并提交。
+4. 输入创意并提交；可使用 [docs/prompt/game.txt](prompt/game.txt) 中的“霓虹躲避球”或“森林符文解谜”。
 5. 观察任务状态、工作流进度、Agent 日志和资源消耗指标。
 6. 等待生成成功，预览生成游戏。
 7. 发布游戏。
@@ -53,6 +53,10 @@
 
 ## 可展示证据
 
+- 演示视频：[docs/video/AgentPlay演示视频.mp4](video/AgentPlay演示视频.mp4)。
+- 截图清单：[docs/demo-assets.md](demo-assets.md)，覆盖登录、Home、Create 和 Play。
+- 测试提示词：[docs/prompt/game.txt](prompt/game.txt)，用于复现 Create 生成游戏流程。
+
 - MinIO 控制台存在 `games/.../manifest.json`、`index.html`、`game.js`、`styles.css`。
 - SQL 查询已发布游戏：
 
@@ -77,4 +81,5 @@
   ORDER BY created_at DESC
   LIMIT 20;
   ```
+
 
